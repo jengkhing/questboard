@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v9</title>
+<title>Kanban Quest — v12</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -320,7 +320,7 @@
     line-height: 1.4;
     color: var(--ink);
     word-break: break-word;
-    padding-right: 48px;
+    padding-right: 76px;
     margin-bottom: 10px;
     cursor: text;
     border-radius: 2px;
@@ -376,7 +376,7 @@
     margin: -2px 0 10px 0;
     white-space: pre-wrap;
     word-break: break-word;
-    padding-right: 32px;
+    padding-right: 4px;
     cursor: text;
     border-radius: 2px;
     transition: background 0.15s, color 0.15s;
@@ -980,25 +980,180 @@
   }
   footer button:hover { color: var(--accent-warm); }
 
+  /* View toggle — Active / Backlog */
+  .view-toggle {
+    display: inline-flex;
+    background: var(--bg-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .view-toggle-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    color: var(--ink-faint);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .view-toggle-btn:hover { color: var(--ink-dim); }
+  .view-toggle-btn.active {
+    background: var(--bg-card);
+    color: var(--ink);
+  }
+  .view-toggle-btn .count {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    background: var(--line);
+    color: var(--ink-dim);
+    min-width: 14px;
+    text-align: center;
+  }
+  .view-toggle-btn.active .count {
+    background: var(--ink-faint);
+    color: var(--bg);
+  }
+
+  /* Backlog board — single wide column */
+  .backlog-board {
+    background: var(--bg-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+  }
+  .backlog-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .backlog-header .b-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .backlog-header .b-sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-faint);
+  }
+  .backlog-body {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+    align-content: start;
+  }
+  .backlog-empty {
+    grid-column: 1 / -1;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-faint);
+    text-align: center;
+    padding: 48px 8px;
+  }
+
+  .backlog-add {
+    margin: 16px 24px 8px;
+  }
+
+  /* Send-to-backlog / restore button on task cards */
+  .task-archive {
+    position: absolute;
+    top: 10px;
+    right: 54px;
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+  }
+  .task:hover .task-archive { opacity: 1; }
+  .task-archive:hover { color: var(--ink); }
+
   @media (max-width: 900px) {
-    .app { padding: 24px 20px 60px; }
+    .backlog-body { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 900px) {
+    .app { padding: 24px 16px 140px; }
     header { flex-direction: column; align-items: flex-start; gap: 24px; }
     .brand h1 { font-size: 32px; }
     .velocity { grid-template-columns: 1fr 1fr; }
     .vel-cell { border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
     .vel-cell:nth-child(2n) { border-right: none; }
     .vel-cell:nth-last-child(-n+2) { border-bottom: none; }
-    .board { grid-template-columns: 1fr; }
-    .column { min-height: 200px; }
+
+    /* Kanban stays horizontal — scroll sideways like Trello/Linear */
+    .board {
+      grid-template-columns: repeat(3, 84vw);
+      gap: 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      /* Bleed out to the screen edge so user knows there's more */
+      margin: 0 -16px;
+      padding: 0 16px 8px;
+      /* Hide scrollbar but keep functionality */
+      scrollbar-width: thin;
+      scrollbar-color: var(--line) transparent;
+    }
+    .board::-webkit-scrollbar { height: 4px; }
+    .board::-webkit-scrollbar-track { background: transparent; }
+    .board::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+
+    .column {
+      scroll-snap-align: start;
+      min-height: 60vh;
+      max-height: 75vh;
+    }
+    .column-body { max-height: none; }
+
+    /* Backlog stays single-column on mobile (it's a pile, not a workflow) */
+    .backlog-body { grid-template-columns: 1fr; }
+    .backlog-add { margin: 12px 16px 8px; }
+
+    /* Footer */
     footer { flex-direction: column; gap: 16px; align-items: flex-start; }
+
+    /* Add-row needs to wrap on narrow screens */
+    .add-row { flex-wrap: wrap; }
+    .add-row .add-input { flex: 1 1 100%; }
+    .type-select, .pain-select { flex: 1; }
   }
+
 </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v9</span>
+      <span class="eyebrow">— Kanban / v12</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <div class="level-block">
@@ -1013,6 +1168,15 @@
       <span id="nextLabel">Next: Level 2</span>
     </div>
     <div class="xp-bar"><div class="xp-bar-fill" id="xpFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="view-toggle">
+    <button class="view-toggle-btn active" data-view="active">
+      Active <span class="count" id="activeCount">0</span>
+    </button>
+    <button class="view-toggle-btn" data-view="backlog">
+      Backlog <span class="count" id="backlogCount">0</span>
+    </button>
   </div>
 
   <div class="velocity">
@@ -1038,7 +1202,7 @@
     </div>
   </div>
 
-  <div class="board" id="board">
+  <div class="board" id="board" data-view-target="active">
     <div class="column" data-col="todo">
       <div class="column-header">
         <span class="column-title">Todo</span>
@@ -1092,6 +1256,30 @@
       </div>
       <div class="column-body" data-body="done"></div>
     </div>
+  </div>
+
+  <div class="backlog-board" id="backlogBoard" data-view-target="backlog" style="display:none">
+    <div class="backlog-header">
+      <span class="b-title">Backlog</span>
+      <span class="b-sub">parked items — not counted in velocity</span>
+    </div>
+    <div class="add-task backlog-add">
+      <div class="add-row">
+        <input class="add-input" data-add="backlog" placeholder="+ park a task or quest for later…" maxlength="140">
+        <div class="type-select">
+          <span class="type-select-label">Type</span>
+          <div class="type-toggle" data-type-toggle="backlog">
+            <button class="type-toggle-btn active" data-type="task">task</button>
+            <button class="type-toggle-btn" data-type="quest">quest</button>
+          </div>
+        </div>
+        <div class="pain-select" data-pain-select="backlog">
+          <span class="pain-select-label">Pain</span>
+          <div class="pain-select-pips"></div>
+        </div>
+      </div>
+    </div>
+    <div class="backlog-body" id="backlogBody"></div>
   </div>
 
   <footer>
@@ -1341,10 +1529,12 @@ let state = {
   level: 1,
   totalDone: 0,
 };
-let pendingPain = { todo: 3, doing: 3 };
-let pendingType = { todo: 'task', doing: 'task' };
+let pendingPain = { todo: 3, doing: 3, backlog: 3 };
+let pendingType = { todo: 'task', doing: 'task', backlog: 'task' };
 // UI-only: which tasks have their description in edit mode (not persisted)
 let editingDesc = new Set();
+// UI-only: current view ('active' or 'backlog')
+let currentView = 'active';
 
 function xpForLevel(lvl) { return 100 + (lvl - 1) * 50; }
 function xpForPain(p, type) {
@@ -1382,6 +1572,7 @@ function computeVelocity() {
 
   state.tasks.forEach(task => {
     if (task.col !== 'done' || !task.completedAt) return;
+    if (task.backlog) return; // backlog items are excluded from velocity
     const c = task.completedAt;
     const isQuest = task.type === 'quest';
     if (c >= weekStart) {
@@ -1435,9 +1626,10 @@ function render() {
   // Cat mood — driven by 7d pain consumed
   updateCatMood(v.painThis);
 
+  // Columns — only show non-backlog tasks in the active board
   ['todo','doing','done'].forEach(col => {
     const body = document.querySelector(`[data-body="${col}"]`);
-    const list = state.tasks.filter(t => t.col === col);
+    const list = state.tasks.filter(t => t.col === col && !t.backlog);
     document.querySelector(`[data-count="${col}"]`).textContent = list.length;
     body.innerHTML = '';
     if (list.length === 0 && col === 'done') {
@@ -1447,6 +1639,32 @@ function render() {
       body.appendChild(e);
     }
     list.forEach(t => body.appendChild(renderTask(t)));
+  });
+
+  // Backlog
+  const backlogBody = document.getElementById('backlogBody');
+  const backlogList = state.tasks.filter(t => t.backlog);
+  backlogBody.innerHTML = '';
+  if (backlogList.length === 0) {
+    const e = document.createElement('div');
+    e.className = 'backlog-empty';
+    e.textContent = 'nothing parked here yet — use the ↓ on any card to send it to the backlog';
+    backlogBody.appendChild(e);
+  } else {
+    backlogList.forEach(t => backlogBody.appendChild(renderTask(t)));
+  }
+
+  // View counts
+  const activeTotal = state.tasks.filter(t => !t.backlog).length;
+  document.getElementById('activeCount').textContent = activeTotal;
+  document.getElementById('backlogCount').textContent = backlogList.length;
+
+  // View visibility
+  document.querySelectorAll('[data-view-target]').forEach(el => {
+    el.style.display = el.dataset.viewTarget === currentView ? '' : 'none';
+  });
+  document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === currentView);
   });
 
   renderPainSelects();
@@ -1615,6 +1833,27 @@ function renderTask(t) {
   });
   el.appendChild(edit);
 
+  // Archive (send to backlog) / Restore (back to Todo)
+  const archive = document.createElement('button');
+  archive.className = 'task-archive';
+  archive.textContent = t.backlog ? '↑' : '↓';
+  archive.title = t.backlog ? 'Restore to Todo' : 'Send to Backlog';
+  archive.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (t.backlog) {
+      // Restore — clear backlog flag, move to Todo, clear completedAt
+      t.backlog = false;
+      t.col = 'todo';
+      t.completedAt = null;
+    } else {
+      // Archive — set backlog flag. Keep its col so it remembers where it was.
+      t.backlog = true;
+    }
+    editingDesc.delete(t.id);
+    save(); render();
+  });
+  el.appendChild(archive);
+
   // Delete button
   const del = document.createElement('button');
   del.className = 'task-del';
@@ -1644,7 +1883,7 @@ function renderTask(t) {
 }
 
 function renderPainSelects() {
-  ['todo','doing'].forEach(col => {
+  ['todo','doing','backlog'].forEach(col => {
     const wrap = document.querySelector(`[data-pain-select="${col}"] .pain-select-pips`);
     if (!wrap) return;
     wrap.innerHTML = '';
@@ -1667,13 +1906,15 @@ document.querySelectorAll('.add-input').forEach(input => {
     if (e.key === 'Enter') {
       const text = input.value.trim();
       if (!text) return;
-      const col = input.dataset.add;
+      const source = input.dataset.add;
+      const isBacklog = source === 'backlog';
       state.tasks.push({
         id: uid(),
         text,
-        col,
-        type: pendingType[col] || 'task',
-        pain: pendingPain[col] || 3,
+        col: isBacklog ? 'todo' : source, // backlog items default to Todo if restored
+        backlog: isBacklog,
+        type: pendingType[source] || 'task',
+        pain: pendingPain[source] || 3,
         createdAt: nowMs(),
       });
       input.value = '';
@@ -1692,6 +1933,14 @@ document.querySelectorAll('.type-toggle').forEach(toggle => {
         b.classList.toggle('active', b.dataset.type === pendingType[col]);
       });
     });
+  });
+});
+
+// View toggle clicks
+document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentView = btn.dataset.view;
+    render();
   });
 });
 
