@@ -1,0 +1,1879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanban Quest — v9</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e10;
+    --bg-soft: #16161a;
+    --bg-card: #1c1c21;
+    --line: #2a2a31;
+    --line-soft: #1f1f25;
+    --ink: #ebebe6;
+    --ink-dim: #8a8a8f;
+    --ink-faint: #55555a;
+    --accent: #d4ff3a;
+    --accent-warm: #ffb347;
+    --done: #4ade80;
+    --pain-1: #6ee7b7;
+    --pain-2: #a3e635;
+    --pain-3: #facc15;
+    --pain-4: #fb923c;
+    --pain-5: #f87171;
+    --cat-body: #f4a04a;
+    --cat-body-dark: #d97a1f;
+    --cat-belly: #fde2c4;
+    --cat-stripe: #c25e0c;
+    --cat-nose: #ff8aa0;
+    --serif: 'Fraunces', Georgia, serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--serif);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body {
+    background:
+      radial-gradient(ellipse at top, rgba(212, 255, 58, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(255, 179, 71, 0.03) 0%, transparent 50%),
+      var(--bg);
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.5;
+  }
+
+  .app {
+    position: relative;
+    z-index: 2;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 48px 80px;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .brand { display: flex; flex-direction: column; }
+  .brand .eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  .brand h1 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 44px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .brand h1 em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .level-block { display: flex; flex-direction: column; align-items: flex-end; }
+  .level-block .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 6px;
+  }
+  .level-block .value {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 56px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.4s;
+  }
+  .level-block .value.bump { transform: scale(1.18); color: var(--accent); }
+
+  /* XP BAR */
+  .xp-bar-wrap { margin-bottom: 40px; }
+  .xp-bar-meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+  }
+  .xp-bar {
+    height: 4px;
+    background: var(--line-soft);
+    position: relative;
+    overflow: hidden;
+  }
+  .xp-bar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: linear-gradient(90deg, var(--accent), var(--accent-warm));
+    transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 0 12px rgba(212, 255, 58, 0.5);
+  }
+  .xp-bar-fill::after {
+    content: '';
+    position: absolute;
+    right: 0; top: -2px; bottom: -2px;
+    width: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* VELOCITY PANEL */
+  .velocity {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-bottom: 48px;
+    border-top: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .vel-cell {
+    padding: 20px 24px;
+    border-right: 1px solid var(--line-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .vel-cell:last-child { border-right: none; }
+  .vel-cell-quest {
+    background: linear-gradient(180deg, rgba(212, 255, 58, 0.04) 0%, transparent 100%);
+  }
+  .vel-cell-quest .vel-label {
+    color: var(--accent);
+  }
+  .vel-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .vel-value {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 32px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .vel-value em {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-left: 6px;
+    letter-spacing: 0.1em;
+  }
+  .vel-delta {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+  }
+  .vel-delta.up { color: var(--accent); }
+  .vel-delta.down { color: var(--accent-warm); }
+  .vel-delta.flat { color: var(--ink-faint); }
+
+  /* BOARD */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .column {
+    background: var(--bg-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .column.drag-over {
+    border-color: var(--accent);
+    background: rgba(212, 255, 58, 0.02);
+  }
+  .column-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .column-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .column-count {
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 300;
+    color: var(--ink-faint);
+  }
+  .column[data-col="done"] .column-title { color: var(--done); }
+
+  .column-body {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    max-height: 600px;
+  }
+
+  /* TASK */
+  .task {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 14px 16px 12px;
+    cursor: grab;
+    position: relative;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    user-select: none;
+  }
+  .task:hover { border-color: var(--ink-faint); transform: translateY(-1px); }
+  .task.dragging { opacity: 0.4; cursor: grabbing; }
+
+  /* QUEST — heavier visual weight */
+  .task.is-quest {
+    background: linear-gradient(180deg, rgba(212, 255, 58, 0.04) 0%, var(--bg-card) 100%);
+    border-color: var(--line);
+    border-left: 3px solid var(--accent);
+    padding-left: 18px;
+    box-shadow: inset 0 0 0 1px rgba(212, 255, 58, 0.06);
+  }
+  .task.is-quest:hover {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px rgba(212, 255, 58, 0.1), 0 0 16px rgba(212, 255, 58, 0.08);
+  }
+  .task.is-quest .task-text {
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .quest-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .quest-eyebrow::before {
+    content: '◆';
+    font-size: 8px;
+    color: var(--accent);
+  }
+  .task.done.is-quest .quest-eyebrow {
+    color: var(--ink-faint);
+  }
+  .task.done.is-quest .quest-eyebrow::before {
+    color: var(--ink-faint);
+  }
+  .task.done.is-quest {
+    background: var(--bg-card);
+    border-left-color: var(--line);
+  }
+  .task-text {
+    font-family: var(--serif);
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--ink);
+    word-break: break-word;
+    padding-right: 48px;
+    margin-bottom: 10px;
+    cursor: text;
+    border-radius: 2px;
+    transition: background 0.15s;
+  }
+  .task-text:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .task-text[contenteditable="true"] {
+    outline: none;
+    background: rgba(212, 255, 58, 0.05);
+    box-shadow: inset 0 0 0 1px var(--accent);
+    cursor: text;
+  }
+  .task.done .task-text {
+    color: var(--ink-faint);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-faint);
+  }
+
+  /* Edit button (replaces the old expand chevron) — small pencil affordance */
+  .task-edit {
+    position: absolute;
+    top: 10px;
+    right: 32px;
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+  }
+  .task:hover .task-edit { opacity: 1; }
+  .task-edit:hover { color: var(--ink); }
+  .task.editing-desc .task-edit {
+    opacity: 1;
+    color: var(--accent);
+  }
+
+  /* Rendered description (display state) — blended prose */
+  .task-desc-render {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    margin: -2px 0 10px 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding-right: 32px;
+    cursor: text;
+    border-radius: 2px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .task-desc-render:hover {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--ink);
+  }
+  .task.done .task-desc-render {
+    color: var(--ink-faint);
+    opacity: 0.7;
+  }
+  /* Quests get slightly larger description text */
+  .task.is-quest .task-desc-render {
+    font-size: 14px;
+    color: var(--ink-dim);
+  }
+
+  /* Description editing — textarea swaps in for the rendered prose */
+  .task-desc {
+    width: 100%;
+    background: rgba(212, 255, 58, 0.04);
+    border: none;
+    box-shadow: inset 0 0 0 1px var(--accent);
+    border-radius: 2px;
+    padding: 8px 10px;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 60px;
+    margin-bottom: 10px;
+    transition: background 0.2s;
+  }
+  .task-desc:focus {
+    outline: none;
+    background: rgba(212, 255, 58, 0.06);
+  }
+  .task-desc::placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+  .task.is-quest .task-desc { font-size: 14px; }
+  .task-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pain-pips {
+    display: flex;
+    gap: 3px;
+  }
+  .pip {
+    width: 14px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .pip:hover { transform: scaleY(1.5); }
+  .pip.on-1 { background: var(--pain-1); }
+  .pip.on-2 { background: var(--pain-2); }
+  .pip.on-3 { background: var(--pain-3); }
+  .pip.on-4 { background: var(--pain-4); }
+  .pip.on-5 { background: var(--pain-5); }
+  .pain-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .task-del {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+  }
+  .task:hover .task-del { opacity: 1; }
+  .task-del:hover { color: var(--accent-warm); }
+
+  /* CHECK-OFF JUICE */
+  .task.checking-off {
+    animation: checkPunch 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes checkPunch {
+    0%   { transform: scale(1); background: var(--bg-card); }
+    20%  { transform: scale(1.06); background: rgba(212, 255, 58, 0.15); border-color: var(--accent); }
+    50%  { transform: scale(1.02); background: rgba(212, 255, 58, 0.08); }
+    100% { transform: scale(1); background: var(--bg-card); border-color: var(--line); }
+  }
+
+  /* ADD TASK */
+  .add-task { margin: 0 16px 16px; }
+  .add-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .add-input {
+    flex: 1;
+    background: transparent;
+    border: 1px dashed var(--line);
+    border-radius: 3px;
+    padding: 12px 14px;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 14px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .add-input::placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+  .add-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(212, 255, 58, 0.02);
+  }
+  .pain-select {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    border: 1px dashed var(--line);
+    border-radius: 3px;
+    align-items: center;
+    justify-content: center;
+    min-width: 56px;
+  }
+  .pain-select-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 2px;
+  }
+  .pain-select-pips {
+    display: flex;
+    gap: 2px;
+  }
+  .ps-pip {
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
+    background: var(--line);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .ps-pip:hover { transform: scale(1.3); }
+  .ps-pip.on-1 { background: var(--pain-1); }
+  .ps-pip.on-2 { background: var(--pain-2); }
+  .ps-pip.on-3 { background: var(--pain-3); }
+  .ps-pip.on-4 { background: var(--pain-4); }
+  .ps-pip.on-5 { background: var(--pain-5); }
+
+  /* Type selector — Task vs Quest toggle */
+  .type-select {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    border: 1px dashed var(--line);
+    border-radius: 3px;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+  }
+  .type-select-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 2px;
+  }
+  .type-toggle {
+    display: flex;
+    background: var(--bg);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .type-toggle-btn {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 6px;
+    background: transparent;
+    border: none;
+    color: var(--ink-faint);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .type-toggle-btn:hover { color: var(--ink-dim); }
+  .type-toggle-btn.active {
+    color: var(--bg);
+    background: var(--accent);
+  }
+  .type-toggle-btn.active.quest-active {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* CAT COMPANION */
+  .cat-companion {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .cat-mood-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 4px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--line-soft);
+    border-radius: 2px;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.3s, transform 0.3s, color 0.4s;
+  }
+  .cat-companion:hover .cat-mood-tag,
+  .cat-companion.show-tag .cat-mood-tag {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .cat-mood-tag.thriving { color: var(--accent); border-color: var(--accent); }
+  .cat-mood-tag.happy { color: var(--accent-warm); }
+  .cat-mood-tag.content { color: var(--ink-dim); }
+  .cat-mood-tag.sleepy { color: var(--ink-faint); }
+
+  .cat-frame {
+    width: 130px;
+    height: 130px;
+    position: relative;
+    cursor: pointer;
+    pointer-events: auto;
+    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
+  }
+  .cat-frame svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  /* Pose switching — sleepy uses lying-down pose, others use upright */
+  .cat-pose-upright { display: block; }
+  .cat-pose-lying { display: none; transform-origin: center 80%; }
+  .cat-frame.mood-sleepy .cat-pose-upright { display: none; }
+  .cat-frame.mood-sleepy .cat-pose-lying { display: block; }
+
+  /* Idle breathing animation on the whole body */
+  .cat-body-group {
+    transform-origin: center 80%;
+    animation: breathe 3.6s ease-in-out infinite;
+  }
+  .cat-frame.mood-sleepy .cat-pose-lying {
+    animation: breathe-slow 5s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1, 1); }
+    50%      { transform: scale(1.03, 0.98); }
+  }
+  @keyframes breathe-slow {
+    0%, 100% { transform: scale(1, 1); }
+    50%      { transform: scale(1.02, 0.985); }
+  }
+
+  /* Tail animations — vary by mood */
+  .cat-tail {
+    transform-origin: 70px 100px;
+    animation: tail-flick 5s ease-in-out infinite;
+  }
+  .cat-frame.mood-content .cat-tail { animation-duration: 4s; }
+  .cat-frame.mood-happy   .cat-tail { animation-duration: 2.2s; }
+  .cat-frame.mood-thriving .cat-tail { animation-duration: 1.4s; }
+  .cat-frame.mood-sleepy   .cat-tail { animation: tail-sleep 8s ease-in-out infinite; }
+
+  @keyframes tail-flick {
+    0%, 70%, 100% { transform: rotate(0deg); }
+    80%           { transform: rotate(14deg); }
+    90%           { transform: rotate(-8deg); }
+  }
+  @keyframes tail-sleep {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(4deg); }
+  }
+
+  /* Eyes — different shapes per mood */
+  .cat-eye { fill: #1a1a1d; transition: all 0.4s; }
+  /* Default: content shows normal open eyes; happy adds a slight upward curve;
+     thriving fully closes them in a squint */
+  .cat-frame.mood-thriving .cat-eye,
+  .cat-frame.mood-sleepy .cat-eye {
+    opacity: 0;
+  }
+
+  /* Happy eyes — curved upward (^_^ feel, but eyes still slightly visible) */
+  .cat-eye-happy {
+    fill: none;
+    stroke: #1a1a1d;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .cat-frame.mood-happy .cat-eye-happy { opacity: 1; }
+  .cat-frame.mood-happy .cat-eye { opacity: 0; }
+
+  /* Thriving — fully closed squint (different from happy) */
+  .cat-eye-closed {
+    fill: none;
+    stroke: #1a1a1d;
+    stroke-width: 2.8;
+    stroke-linecap: round;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .cat-frame.mood-thriving .cat-eye-closed,
+  .cat-frame.mood-sleepy .cat-eye-closed {
+    opacity: 1;
+  }
+
+  /* Blink — only for content (happy and thriving have their own closed eyes) */
+  .cat-frame.mood-content .cat-eye {
+    animation: blink 5.5s infinite;
+  }
+  @keyframes blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    94%, 98%      { transform: scaleY(0.1); }
+  }
+
+  /* Mouth variants — three distinct shapes */
+  .cat-mouth-neutral,
+  .cat-mouth-smile,
+  .cat-mouth-grin { transition: opacity 0.4s; }
+  .cat-mouth-neutral { opacity: 1; }
+  .cat-mouth-smile { opacity: 0; }
+  .cat-mouth-grin { opacity: 0; }
+
+  .cat-frame.mood-happy .cat-mouth-neutral { opacity: 0; }
+  .cat-frame.mood-happy .cat-mouth-smile { opacity: 1; }
+
+  .cat-frame.mood-thriving .cat-mouth-neutral { opacity: 0; }
+  .cat-frame.mood-thriving .cat-mouth-grin { opacity: 1; }
+
+  /* Ear perk — happy and thriving lift ears up; thriving lifts more */
+  .cat-ear-group {
+    transform-origin: center bottom;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .cat-frame.mood-happy .cat-ear-group {
+    transform: translateY(-3px);
+  }
+  .cat-frame.mood-thriving .cat-ear-group {
+    transform: translateY(-5px);
+  }
+
+  /* Head tilt for happy — adds personality */
+  .cat-head-group {
+    transform-origin: 75px 90px;
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .cat-frame.mood-happy .cat-head-group {
+    transform: rotate(-4deg);
+  }
+
+  /* Thriving body bounce — the cat is excited */
+  .cat-frame.mood-thriving .cat-body-group {
+    animation: bounce-excited 0.9s ease-in-out infinite;
+  }
+  @keyframes bounce-excited {
+    0%, 100% { transform: scale(1, 1) translateY(0); }
+    50%      { transform: scale(1.04, 0.96) translateY(-4px); }
+  }
+
+  /* Extra blush for thriving — flushed with joy */
+  .cat-blush {
+    transition: opacity 0.4s, fill 0.4s;
+  }
+  .cat-frame.mood-thriving .cat-blush {
+    opacity: 0.85;
+  }
+  .cat-frame.mood-happy .cat-blush {
+    opacity: 0.7;
+  }
+
+  /* Sparkles — only for thriving */
+  .cat-sparkle {
+    fill: var(--accent);
+    opacity: 0;
+    transform-origin: center;
+  }
+  .cat-frame.mood-thriving .cat-sparkle {
+    animation: sparkle 2s ease-in-out infinite;
+  }
+  .cat-frame.mood-thriving .cat-sparkle:nth-child(2) { animation-delay: 0.6s; }
+  .cat-frame.mood-thriving .cat-sparkle:nth-child(3) { animation-delay: 1.2s; }
+  @keyframes sparkle {
+    0%, 100% { opacity: 0; transform: scale(0.4); }
+    50%      { opacity: 1; transform: scale(1); }
+  }
+
+  /* Sleepy Zs */
+  .cat-z {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    fill: var(--ink-faint);
+    opacity: 0;
+  }
+  .cat-frame.mood-sleepy .cat-z {
+    animation: z-float 3s ease-out infinite;
+  }
+  .cat-frame.mood-sleepy .cat-z:nth-child(2) { animation-delay: 1s; }
+  @keyframes z-float {
+    0%   { opacity: 0; transform: translate(0, 0); }
+    30%  { opacity: 0.8; }
+    100% { opacity: 0; transform: translate(8px, -20px); }
+  }
+
+  /* Click bounce */
+  .cat-frame.bounce .cat-body-group {
+    animation: cat-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes cat-bounce {
+    0%, 100% { transform: scale(1, 1) translateY(0); }
+    40%      { transform: scale(1.08, 0.92) translateY(-4px); }
+    70%      { transform: scale(0.96, 1.04) translateY(0); }
+  }
+
+  @media (max-width: 900px) {
+    .cat-frame { width: 96px; height: 96px; }
+    .cat-companion { bottom: 16px; right: 16px; }
+  }
+
+
+  .particle-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    overflow: hidden;
+  }
+  .particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
+    animation: particle-burst 0.9s ease-out forwards;
+  }
+  @keyframes particle-burst {
+    0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+  }
+
+  /* XP POP */
+  .xp-pop {
+    position: fixed;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 28px;
+    color: var(--accent);
+    pointer-events: none;
+    z-index: 51;
+    animation: xpFloat 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    text-shadow: 0 0 12px rgba(212, 255, 58, 0.6);
+    white-space: nowrap;
+  }
+  .xp-pop.quest {
+    font-size: 44px;
+    font-weight: 700;
+    text-shadow: 0 0 20px rgba(212, 255, 58, 0.8), 0 0 40px rgba(212, 255, 58, 0.4);
+    animation: xpFloat 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes xpFloat {
+    0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+    20%  { transform: translate(-50%, -60%) scale(1.15); opacity: 1; }
+    100% { transform: translate(-50%, -180%) scale(0.95); opacity: 0; }
+  }
+
+  /* LEVEL TOAST */
+  .level-toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: var(--bg-card);
+    border: 1px solid var(--accent);
+    padding: 28px 48px;
+    text-align: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    box-shadow: 0 0 60px rgba(212, 255, 58, 0.3);
+    transition: opacity 0.4s, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .level-toast.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .level-toast .lt-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .level-toast .lt-value {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 56px;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .level-toast .lt-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-top: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  /* EMPTY STATE */
+  .empty {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-faint);
+    text-align: center;
+    padding: 24px 8px;
+  }
+
+  /* FOOTER */
+  footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  footer .legend {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  footer .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  footer .legend-dot {
+    width: 8px;
+    height: 3px;
+    border-radius: 1px;
+  }
+  footer button {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  footer button:hover { color: var(--accent-warm); }
+
+  @media (max-width: 900px) {
+    .app { padding: 24px 20px 60px; }
+    header { flex-direction: column; align-items: flex-start; gap: 24px; }
+    .brand h1 { font-size: 32px; }
+    .velocity { grid-template-columns: 1fr 1fr; }
+    .vel-cell { border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+    .vel-cell:nth-child(2n) { border-right: none; }
+    .vel-cell:nth-last-child(-n+2) { border-bottom: none; }
+    .board { grid-template-columns: 1fr; }
+    .column { min-height: 200px; }
+    footer { flex-direction: column; gap: 16px; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <span class="eyebrow">— Kanban / v9</span>
+      <h1>Quest <em>board.</em></h1>
+    </div>
+    <div class="level-block">
+      <span class="label">Level</span>
+      <span class="value" id="levelValue">1</span>
+    </div>
+  </header>
+
+  <div class="xp-bar-wrap">
+    <div class="xp-bar-meta">
+      <span id="xpLabel">XP — 0 / 100</span>
+      <span id="nextLabel">Next: Level 2</span>
+    </div>
+    <div class="xp-bar"><div class="xp-bar-fill" id="xpFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="velocity">
+    <div class="vel-cell vel-cell-quest">
+      <span class="vel-label">◆ Quests shipped · 7d</span>
+      <span class="vel-value" id="questsWeek">0</span>
+      <span class="vel-delta flat" id="questsDelta">— vs. prior week</span>
+    </div>
+    <div class="vel-cell">
+      <span class="vel-label">Tasks shipped · 7d</span>
+      <span class="vel-value" id="tasksWeek">0</span>
+      <span class="vel-delta flat" id="tasksDelta">— vs. prior week</span>
+    </div>
+    <div class="vel-cell">
+      <span class="vel-label">Pain consumed · 7d</span>
+      <span class="vel-value" id="painWeek">0<em>pts</em></span>
+      <span class="vel-delta flat" id="painDelta">— vs. prior week</span>
+    </div>
+    <div class="vel-cell">
+      <span class="vel-label">Avg pain / item · 7d</span>
+      <span class="vel-value" id="avgPain">—</span>
+      <span class="vel-delta flat" id="avgPainDelta">— vs. prior week</span>
+    </div>
+  </div>
+
+  <div class="board" id="board">
+    <div class="column" data-col="todo">
+      <div class="column-header">
+        <span class="column-title">Todo</span>
+        <span class="column-count" data-count="todo">0</span>
+      </div>
+      <div class="column-body" data-body="todo"></div>
+      <div class="add-task">
+        <div class="add-row">
+          <input class="add-input" data-add="todo" placeholder="+ new task or quest…" maxlength="140">
+          <div class="type-select">
+            <span class="type-select-label">Type</span>
+            <div class="type-toggle" data-type-toggle="todo">
+              <button class="type-toggle-btn active" data-type="task">task</button>
+              <button class="type-toggle-btn" data-type="quest">quest</button>
+            </div>
+          </div>
+          <div class="pain-select" data-pain-select="todo">
+            <span class="pain-select-label">Pain</span>
+            <div class="pain-select-pips"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="column" data-col="doing">
+      <div class="column-header">
+        <span class="column-title">In progress</span>
+        <span class="column-count" data-count="doing">0</span>
+      </div>
+      <div class="column-body" data-body="doing"></div>
+      <div class="add-task">
+        <div class="add-row">
+          <input class="add-input" data-add="doing" placeholder="+ in progress…" maxlength="140">
+          <div class="type-select">
+            <span class="type-select-label">Type</span>
+            <div class="type-toggle" data-type-toggle="doing">
+              <button class="type-toggle-btn active" data-type="task">task</button>
+              <button class="type-toggle-btn" data-type="quest">quest</button>
+            </div>
+          </div>
+          <div class="pain-select" data-pain-select="doing">
+            <span class="pain-select-label">Pain</span>
+            <div class="pain-select-pips"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="column" data-col="done">
+      <div class="column-header">
+        <span class="column-title">Done</span>
+        <span class="column-count" data-count="done">0</span>
+      </div>
+      <div class="column-body" data-body="done"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="legend">
+      <span>Pain ·</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--pain-1)"></span>1 trivial</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--pain-2)"></span>2 light</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--pain-3)"></span>3 medium</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--pain-4)"></span>4 heavy</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--pain-5)"></span>5 brutal</span>
+    </div>
+    <button id="resetBtn">Reset everything</button>
+  </footer>
+</div>
+
+<div class="cat-companion" id="catCompanion">
+  <div class="cat-mood-tag content" id="catMoodTag">content</div>
+  <div class="cat-frame mood-content" id="catFrame">
+    <svg viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
+      <!-- Sparkles (thriving only) -->
+      <g class="cat-sparkles">
+        <path class="cat-sparkle" d="M 20 30 L 22 38 L 30 40 L 22 42 L 20 50 L 18 42 L 10 40 L 18 38 Z"/>
+        <path class="cat-sparkle" d="M 125 25 L 127 31 L 133 33 L 127 35 L 125 41 L 123 35 L 117 33 L 123 31 Z" transform="scale(0.8) translate(28, 8)"/>
+        <path class="cat-sparkle" d="M 130 75 L 131 79 L 135 80 L 131 81 L 130 85 L 129 81 L 125 80 L 129 79 Z"/>
+      </g>
+
+      <!-- Sleepy Z's (positioned above lying cat's head) -->
+      <text class="cat-z" x="70" y="72" font-size="14">z</text>
+      <text class="cat-z" x="78" y="58" font-size="10">z</text>
+
+      <!-- ============ UPRIGHT POSE (content / happy / thriving) ============ -->
+      <g class="cat-pose-upright">
+        <!-- Tail (behind body) -->
+        <g class="cat-tail">
+          <path d="M 70 100 Q 48 100 38 80 Q 32 64 44 54 Q 50 50 56 56"
+                fill="none" stroke="var(--cat-body-dark)" stroke-width="13" stroke-linecap="round"/>
+          <path d="M 70 100 Q 48 100 38 80 Q 32 64 44 54 Q 50 50 56 56"
+                fill="none" stroke="var(--cat-body)" stroke-width="9" stroke-linecap="round"/>
+          <!-- Tail tip fluff -->
+          <circle cx="56" cy="56" r="6" fill="var(--cat-belly)"/>
+          <circle cx="54" cy="54" r="2" fill="var(--cat-body)" opacity="0.4"/>
+        </g>
+
+        <g class="cat-body-group">
+          <!-- Body (chunky pear) -->
+          <ellipse cx="75" cy="108" rx="34" ry="29" fill="var(--cat-body-dark)"/>
+          <ellipse cx="75" cy="106" rx="32" ry="27" fill="var(--cat-body)"/>
+
+          <!-- Belly fluff -->
+          <ellipse cx="75" cy="116" rx="20" ry="15" fill="var(--cat-belly)"/>
+          <!-- Chest fluff tuft -->
+          <path d="M 65 92 Q 70 88 75 92 Q 80 88 85 92 Q 82 100 75 100 Q 68 100 65 92 Z"
+                fill="var(--cat-belly)"/>
+
+          <!-- Body stripes -->
+          <path d="M 53 98 Q 58 94 63 98" stroke="var(--cat-stripe)" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.5"/>
+          <path d="M 87 98 Q 92 94 97 98" stroke="var(--cat-stripe)" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.5"/>
+          <path d="M 58 108 Q 62 105 66 108" stroke="var(--cat-stripe)" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+          <path d="M 84 108 Q 88 105 92 108" stroke="var(--cat-stripe)" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+
+          <!-- Front paws (rounder, with fluff) -->
+          <ellipse cx="61" cy="131" rx="9" ry="7" fill="var(--cat-body-dark)"/>
+          <ellipse cx="61" cy="130" rx="8" ry="6" fill="var(--cat-body)"/>
+          <circle cx="58" cy="132" r="2" fill="var(--cat-belly)" opacity="0.7"/>
+          <ellipse cx="89" cy="131" rx="9" ry="7" fill="var(--cat-body-dark)"/>
+          <ellipse cx="89" cy="130" rx="8" ry="6" fill="var(--cat-body)"/>
+          <circle cx="92" cy="132" r="2" fill="var(--cat-belly)" opacity="0.7"/>
+
+          <!-- HEAD GROUP — tilts on happy mood -->
+          <g class="cat-head-group">
+            <!-- Head (bigger for chibi cuteness) -->
+            <ellipse cx="75" cy="62" rx="36" ry="32" fill="var(--cat-body-dark)"/>
+            <ellipse cx="75" cy="61" rx="34" ry="30" fill="var(--cat-body)"/>
+
+            <!-- Cheek fur tufts (the furry/fluffy bit) -->
+            <path d="M 41 65 Q 38 70 42 75 Q 46 72 47 68 Z" fill="var(--cat-body-dark)"/>
+            <path d="M 42 66 Q 40 70 43 73 Q 46 71 47 68 Z" fill="var(--cat-body)"/>
+            <path d="M 109 65 Q 112 70 108 75 Q 104 72 103 68 Z" fill="var(--cat-body-dark)"/>
+            <path d="M 108 66 Q 110 70 107 73 Q 104 71 103 68 Z" fill="var(--cat-body)"/>
+
+            <!-- Forehead fluff -->
+            <path d="M 65 35 Q 70 33 75 36 Q 80 33 85 35 Q 82 40 75 40 Q 68 40 65 35 Z"
+                  fill="var(--cat-body)" opacity="0.85"/>
+
+            <!-- Head stripes -->
+            <path d="M 58 40 Q 61 44 58 48" stroke="var(--cat-stripe)" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.55"/>
+            <path d="M 75 35 Q 75 41 75 45" stroke="var(--cat-stripe)" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.55"/>
+            <path d="M 92 40 Q 89 44 92 48" stroke="var(--cat-stripe)" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.55"/>
+
+            <!-- EARS — wrapped in group so they can perk up -->
+            <g class="cat-ear-group">
+              <path d="M 46 46 L 42 24 L 62 40 Z" fill="var(--cat-body-dark)"/>
+              <path d="M 48 44 L 46 28 L 60 40 Z" fill="var(--cat-body)"/>
+              <path d="M 50 40 L 49 31 L 58 39 Z" fill="var(--cat-nose)" opacity="0.55"/>
+              <circle cx="48" cy="32" r="2" fill="var(--cat-belly)" opacity="0.8"/>
+
+              <path d="M 104 46 L 108 24 L 88 40 Z" fill="var(--cat-body-dark)"/>
+              <path d="M 102 44 L 104 28 L 90 40 Z" fill="var(--cat-body)"/>
+              <path d="M 100 40 L 101 31 L 92 39 Z" fill="var(--cat-nose)" opacity="0.55"/>
+              <circle cx="102" cy="32" r="2" fill="var(--cat-belly)" opacity="0.8"/>
+            </g>
+
+            <!-- Cheek blush (intensifies on happy/thriving) -->
+            <ellipse class="cat-blush" cx="54" cy="71" rx="5.5" ry="3.5" fill="var(--cat-nose)" opacity="0.55"/>
+            <ellipse class="cat-blush" cx="96" cy="71" rx="5.5" ry="3.5" fill="var(--cat-nose)" opacity="0.55"/>
+
+            <!-- Eyes (open — content default) -->
+            <ellipse class="cat-eye" cx="63" cy="63" rx="4.5" ry="6.5"/>
+            <ellipse class="cat-eye" cx="87" cy="63" rx="4.5" ry="6.5"/>
+            <circle class="cat-eye" cx="65" cy="60.5" r="1.7" style="fill:white"/>
+            <circle class="cat-eye" cx="89" cy="60.5" r="1.7" style="fill:white"/>
+            <circle class="cat-eye" cx="61.5" cy="65" r="0.8" style="fill:white"/>
+            <circle class="cat-eye" cx="85.5" cy="65" r="0.8" style="fill:white"/>
+
+            <!-- Eyes (happy — upward curve, like ^^ but softer) -->
+            <path class="cat-eye-happy" d="M 57 65 Q 63 58 69 65"/>
+            <path class="cat-eye-happy" d="M 81 65 Q 87 58 93 65"/>
+
+            <!-- Eyes (thriving — full squint, deeper curve than happy) -->
+            <path class="cat-eye-closed" d="M 56 66 Q 63 56 70 66"/>
+            <path class="cat-eye-closed" d="M 80 66 Q 87 56 94 66"/>
+
+            <!-- Nose -->
+            <path d="M 72 72 L 78 72 L 75 75.5 Z" fill="var(--cat-nose)"/>
+
+            <!-- Mouth: neutral (content) -->
+            <g class="cat-mouth-neutral">
+              <path d="M 75 75.5 L 75 78.5" stroke="#1a1a1d" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M 75 78.5 Q 71 80.5 69 79" stroke="#1a1a1d" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              <path d="M 75 78.5 Q 79 80.5 81 79" stroke="#1a1a1d" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            </g>
+            <!-- Mouth: smile (happy — small closed smile) -->
+            <g class="cat-mouth-smile">
+              <path d="M 75 75.5 L 75 78.5" stroke="#1a1a1d" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M 75 78.5 Q 70 83 66 81" stroke="#1a1a1d" stroke-width="1.9" fill="none" stroke-linecap="round"/>
+              <path d="M 75 78.5 Q 80 83 84 81" stroke="#1a1a1d" stroke-width="1.9" fill="none" stroke-linecap="round"/>
+            </g>
+            <!-- Mouth: grin (thriving — big open laughing mouth) -->
+            <g class="cat-mouth-grin">
+              <path d="M 75 75.5 L 75 78" stroke="#1a1a1d" stroke-width="1.5" stroke-linecap="round"/>
+              <!-- Open mouth shape -->
+              <path d="M 67 79 Q 75 89 83 79 Q 75 85 67 79 Z" fill="#1a1a1d"/>
+              <!-- Little tongue -->
+              <path d="M 71 83 Q 75 87 79 83 Q 75 86 71 83 Z" fill="var(--cat-nose)"/>
+            </g>
+
+            <!-- Whiskers -->
+            <path d="M 48 74 L 34 71" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+            <path d="M 48 78 L 34 80" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+            <path d="M 102 74 L 116 71" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+            <path d="M 102 78 L 116 80" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+          </g>
+        </g>
+      </g>
+
+      <!-- ============ LYING POSE (sleepy only) ============ -->
+      <g class="cat-pose-lying">
+        <!-- Curled tail wrapping around -->
+        <path d="M 110 118 Q 122 110 118 96 Q 114 86 105 90"
+              fill="none" stroke="var(--cat-body-dark)" stroke-width="13" stroke-linecap="round"/>
+        <path d="M 110 118 Q 122 110 118 96 Q 114 86 105 90"
+              fill="none" stroke="var(--cat-body)" stroke-width="9" stroke-linecap="round"/>
+        <circle cx="105" cy="90" r="6" fill="var(--cat-belly)"/>
+
+        <!-- Body (low, elongated oval — lying down) -->
+        <ellipse cx="75" cy="112" rx="48" ry="18" fill="var(--cat-body-dark)"/>
+        <ellipse cx="75" cy="110" rx="46" ry="16" fill="var(--cat-body)"/>
+
+        <!-- Belly visible on the side -->
+        <ellipse cx="70" cy="118" rx="32" ry="8" fill="var(--cat-belly)"/>
+
+        <!-- Body stripes (running along) -->
+        <path d="M 50 108 Q 55 105 60 108" stroke="var(--cat-stripe)" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+        <path d="M 80 108 Q 85 105 90 108" stroke="var(--cat-stripe)" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+        <path d="M 95 110 Q 100 107 105 110" stroke="var(--cat-stripe)" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+
+        <!-- Tucked back paw peek -->
+        <ellipse cx="40" cy="124" rx="8" ry="5" fill="var(--cat-body-dark)"/>
+        <ellipse cx="40" cy="123" rx="7" ry="4" fill="var(--cat-body)"/>
+
+        <!-- Front paws (stretched forward, head resting between) -->
+        <ellipse cx="50" cy="120" rx="10" ry="5" fill="var(--cat-body-dark)"/>
+        <ellipse cx="50" cy="119" rx="9" ry="4" fill="var(--cat-body)"/>
+        <circle cx="46" cy="121" r="2" fill="var(--cat-belly)" opacity="0.8"/>
+
+        <!-- Head (resting on side, tilted) -->
+        <g transform="rotate(-12, 65, 95)">
+          <!-- Head shape -->
+          <ellipse cx="65" cy="95" rx="28" ry="24" fill="var(--cat-body-dark)"/>
+          <ellipse cx="65" cy="94" rx="26" ry="22" fill="var(--cat-body)"/>
+
+          <!-- Cheek fluff -->
+          <path d="M 38 96 Q 35 100 39 105 Q 43 102 44 99 Z" fill="var(--cat-body-dark)"/>
+          <path d="M 39 97 Q 37 100 40 103 Q 43 101 44 99 Z" fill="var(--cat-body)"/>
+
+          <!-- Folded ears (lying flat-ish) -->
+          <path d="M 44 80 L 42 66 L 56 78 Z" fill="var(--cat-body-dark)"/>
+          <path d="M 46 79 L 45 70 L 54 78 Z" fill="var(--cat-body)"/>
+          <path d="M 47 76 L 47 71 L 52 77 Z" fill="var(--cat-nose)" opacity="0.5"/>
+
+          <path d="M 86 78 L 92 64 L 80 74 Z" fill="var(--cat-body-dark)"/>
+          <path d="M 86 77 L 90 67 L 82 75 Z" fill="var(--cat-body)"/>
+          <circle cx="89" cy="70" r="1.5" fill="var(--cat-belly)" opacity="0.8"/>
+
+          <!-- Forehead stripes -->
+          <path d="M 58 72 Q 60 75 58 78" stroke="var(--cat-stripe)" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.5"/>
+          <path d="M 70 70 Q 70 74 70 77" stroke="var(--cat-stripe)" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.5"/>
+
+          <!-- Closed sleepy eyes -->
+          <path d="M 52 96 Q 56 93 60 96" fill="none" stroke="#1a1a1d" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M 72 96 Q 76 93 80 96" fill="none" stroke="#1a1a1d" stroke-width="2.2" stroke-linecap="round"/>
+
+          <!-- Blush -->
+          <ellipse cx="48" cy="102" rx="4.5" ry="2.8" fill="var(--cat-nose)" opacity="0.5"/>
+          <ellipse cx="82" cy="102" rx="4.5" ry="2.8" fill="var(--cat-nose)" opacity="0.5"/>
+
+          <!-- Nose -->
+          <path d="M 63 104 L 67 104 L 65 107 Z" fill="var(--cat-nose)"/>
+
+          <!-- Sleeping mouth (tiny content curve) -->
+          <path d="M 65 107 Q 62 110 60 108" fill="none" stroke="#1a1a1d" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M 65 107 Q 68 110 70 108" fill="none" stroke="#1a1a1d" stroke-width="1.4" stroke-linecap="round"/>
+
+          <!-- Whiskers -->
+          <path d="M 42 105 L 30 104" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+          <path d="M 42 108 L 30 110" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+          <path d="M 88 105 L 96 104" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<div class="particle-layer" id="particleLayer"></div>
+<div class="level-toast" id="levelToast">
+  <div class="lt-eyebrow">Level up</div>
+  <div class="lt-value" id="ltValue">2</div>
+  <div class="lt-sub">— onward</div>
+</div>
+
+<script>
+// ============ STATE ============
+const STORAGE_KEY = 'kanban-quest-v7';
+let state = {
+  tasks: [],
+  xp: 0,
+  level: 1,
+  totalDone: 0,
+};
+let pendingPain = { todo: 3, doing: 3 };
+let pendingType = { todo: 'task', doing: 'task' };
+// UI-only: which tasks have their description in edit mode (not persisted)
+let editingDesc = new Set();
+
+function xpForLevel(lvl) { return 100 + (lvl - 1) * 50; }
+function xpForPain(p, type) {
+  // Quests are worth 3x — they're projects, much higher impact
+  const mult = type === 'quest' ? 3 : 1;
+  return p * 20 * mult;
+}
+function uid() { return Math.random().toString(36).slice(2, 10); }
+function nowMs() { return Date.now(); }
+const DAY = 24 * 60 * 60 * 1000;
+
+// ============ STORAGE (localStorage — works anywhere) ============
+async function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state = { ...state, ...parsed };
+    }
+  } catch (e) { /* fresh start */ }
+}
+async function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { /* quota exceeded or disabled — ignore */ }
+}
+
+// ============ VELOCITY ============
+function computeVelocity() {
+  const t = nowMs();
+  const weekStart = t - 7 * DAY;
+  const priorStart = t - 14 * DAY;
+
+  let painThis = 0, tasksThis = 0, questsThis = 0;
+  let painPrior = 0, tasksPrior = 0, questsPrior = 0;
+
+  state.tasks.forEach(task => {
+    if (task.col !== 'done' || !task.completedAt) return;
+    const c = task.completedAt;
+    const isQuest = task.type === 'quest';
+    if (c >= weekStart) {
+      painThis += task.pain || 0;
+      tasksThis += 1;
+      if (isQuest) questsThis += 1;
+    } else if (c >= priorStart) {
+      painPrior += task.pain || 0;
+      tasksPrior += 1;
+      if (isQuest) questsPrior += 1;
+    }
+  });
+
+  const avgThis = tasksThis > 0 ? painThis / tasksThis : 0;
+  const avgPrior = tasksPrior > 0 ? painPrior / tasksPrior : 0;
+
+  return { painThis, tasksThis, questsThis, avgThis, painPrior, tasksPrior, questsPrior, avgPrior };
+}
+
+function fmtDelta(cur, prev) {
+  if (prev === 0 && cur === 0) return { text: '— no prior data', cls: 'flat' };
+  if (prev === 0) return { text: `↑ new ground`, cls: 'up' };
+  const diff = cur - prev;
+  if (Math.abs(diff) < 0.01) return { text: `→ flat vs. prior week`, cls: 'flat' };
+  const pct = Math.round((diff / prev) * 100);
+  const arrow = diff > 0 ? '↑' : '↓';
+  const cls = diff > 0 ? 'up' : 'down';
+  return { text: `${arrow} ${Math.abs(pct)}% vs. prior week`, cls };
+}
+
+// ============ RENDER ============
+function render() {
+  document.getElementById('levelValue').textContent = state.level;
+  const need = xpForLevel(state.level);
+  const pct = Math.min(100, (state.xp / need) * 100);
+  document.getElementById('xpFill').style.width = pct + '%';
+  document.getElementById('xpLabel').textContent = `XP — ${state.xp} / ${need}`;
+  document.getElementById('nextLabel').textContent = `Next: Level ${state.level + 1}`;
+
+  const v = computeVelocity();
+  document.getElementById('questsWeek').textContent = v.questsThis;
+  document.getElementById('painWeek').innerHTML = `${v.painThis}<em>pts</em>`;
+  document.getElementById('tasksWeek').textContent = v.tasksThis;
+  document.getElementById('avgPain').textContent = v.tasksThis > 0 ? v.avgThis.toFixed(1) : '—';
+
+  applyDelta('questsDelta', fmtDelta(v.questsThis, v.questsPrior));
+  applyDelta('painDelta', fmtDelta(v.painThis, v.painPrior));
+  applyDelta('tasksDelta', fmtDelta(v.tasksThis, v.tasksPrior));
+  applyDelta('avgPainDelta', fmtDelta(v.avgThis, v.avgPrior));
+
+  // Cat mood — driven by 7d pain consumed
+  updateCatMood(v.painThis);
+
+  ['todo','doing','done'].forEach(col => {
+    const body = document.querySelector(`[data-body="${col}"]`);
+    const list = state.tasks.filter(t => t.col === col);
+    document.querySelector(`[data-count="${col}"]`).textContent = list.length;
+    body.innerHTML = '';
+    if (list.length === 0 && col === 'done') {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'drag here to complete';
+      body.appendChild(e);
+    }
+    list.forEach(t => body.appendChild(renderTask(t)));
+  });
+
+  renderPainSelects();
+}
+
+function applyDelta(id, d) {
+  const el = document.getElementById(id);
+  el.textContent = d.text;
+  el.classList.remove('up','down','flat');
+  el.classList.add(d.cls);
+}
+
+function renderTask(t) {
+  const isQuest = t.type === 'quest';
+  const isEditingDesc = editingDesc.has(t.id);
+  const hasDesc = t.description && t.description.trim().length > 0;
+  const el = document.createElement('div');
+  el.className = 'task'
+    + (t.col === 'done' ? ' done' : '')
+    + (isQuest ? ' is-quest' : '')
+    + (isEditingDesc ? ' editing-desc' : '');
+  el.draggable = !isEditingDesc; // disable drag while editing description
+  el.dataset.id = t.id;
+
+  // Quest eyebrow label
+  if (isQuest) {
+    const eyebrow = document.createElement('div');
+    eyebrow.className = 'quest-eyebrow';
+    eyebrow.textContent = 'Quest';
+    el.appendChild(eyebrow);
+  }
+
+  // Title — editable on click
+  const text = document.createElement('div');
+  text.className = 'task-text';
+  text.textContent = t.text;
+  text.title = 'Click to edit';
+  text.addEventListener('click', (e) => {
+    if (text.getAttribute('contenteditable') === 'true') return;
+    e.stopPropagation();
+    text.setAttribute('contenteditable', 'true');
+    el.draggable = false;
+    text.focus();
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+  const commitTitle = () => {
+    const newText = text.textContent.trim();
+    text.removeAttribute('contenteditable');
+    el.draggable = !editingDesc.has(t.id);
+    if (!newText) {
+      text.textContent = t.text;
+      return;
+    }
+    if (newText !== t.text) {
+      t.text = newText;
+      save();
+    }
+  };
+  text.addEventListener('blur', commitTitle);
+  text.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      text.blur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      text.textContent = t.text;
+      text.blur();
+    }
+  });
+  text.addEventListener('mousedown', (e) => e.stopPropagation());
+  el.appendChild(text);
+
+  // Description: either rendered (display) or textarea (editing)
+  if (isEditingDesc) {
+    const desc = document.createElement('textarea');
+    desc.className = 'task-desc';
+    desc.placeholder = isQuest
+      ? 'What is this Quest about? Goals, context, next steps…'
+      : 'Add a note…';
+    desc.value = t.description || '';
+    desc.addEventListener('blur', () => {
+      t.description = desc.value.trim();
+      editingDesc.delete(t.id);
+      save();
+      render();
+    });
+    desc.addEventListener('keydown', (e) => {
+      // Cmd/Ctrl+Enter to save and close
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        desc.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        // Revert to original and close
+        desc.value = t.description || '';
+        editingDesc.delete(t.id);
+        render();
+      }
+    });
+    desc.addEventListener('mousedown', (e) => e.stopPropagation());
+    el.appendChild(desc);
+    // Auto-focus + place cursor at end
+    setTimeout(() => {
+      desc.focus();
+      desc.setSelectionRange(desc.value.length, desc.value.length);
+    }, 0);
+  } else if (hasDesc) {
+    // Rendered description — blended prose, clickable to edit, draggable card
+    const descRender = document.createElement('div');
+    descRender.className = 'task-desc-render';
+    descRender.textContent = t.description;
+    descRender.title = 'Click to edit description';
+    descRender.addEventListener('click', (e) => {
+      e.stopPropagation();
+      editingDesc.add(t.id);
+      render();
+    });
+    // Don't initiate drag from inside the description text
+    descRender.addEventListener('mousedown', (e) => e.stopPropagation());
+    el.appendChild(descRender);
+  }
+
+  // Meta row (pain + label)
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const pips = document.createElement('div');
+  pips.className = 'pain-pips';
+  for (let i = 1; i <= 5; i++) {
+    const p = document.createElement('div');
+    p.className = 'pip' + (i <= t.pain ? ` on-${t.pain}` : '');
+    p.title = `Set pain to ${i}`;
+    p.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (t.col === 'done') return;
+      t.pain = i;
+      save(); render();
+    });
+    pips.appendChild(p);
+  }
+  meta.appendChild(pips);
+
+  const label = document.createElement('span');
+  label.className = 'pain-label';
+  label.textContent = `pain ${t.pain} · ${xpForPain(t.pain, t.type)} xp`;
+  meta.appendChild(label);
+  el.appendChild(meta);
+
+  // Edit-description button (pencil) — opens textarea
+  const edit = document.createElement('button');
+  edit.className = 'task-edit';
+  edit.textContent = hasDesc ? '✎' : '+';
+  edit.title = hasDesc ? 'Edit description' : 'Add description';
+  edit.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (editingDesc.has(t.id)) {
+      editingDesc.delete(t.id);
+    } else {
+      editingDesc.add(t.id);
+    }
+    render();
+  });
+  el.appendChild(edit);
+
+  // Delete button
+  const del = document.createElement('button');
+  del.className = 'task-del';
+  del.textContent = '×';
+  del.title = 'Delete';
+  del.addEventListener('click', (e) => {
+    e.stopPropagation();
+    state.tasks = state.tasks.filter(x => x.id !== t.id);
+    editingDesc.delete(t.id);
+    save(); render();
+  });
+  el.appendChild(del);
+
+  // Drag handlers — block when editing
+  el.addEventListener('dragstart', (e) => {
+    if (text.getAttribute('contenteditable') === 'true' || editingDesc.has(t.id)) {
+      e.preventDefault();
+      return;
+    }
+    el.classList.add('dragging');
+    e.dataTransfer.setData('text/plain', t.id);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  el.addEventListener('dragend', () => el.classList.remove('dragging'));
+
+  return el;
+}
+
+function renderPainSelects() {
+  ['todo','doing'].forEach(col => {
+    const wrap = document.querySelector(`[data-pain-select="${col}"] .pain-select-pips`);
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    for (let i = 1; i <= 5; i++) {
+      const p = document.createElement('div');
+      p.className = 'ps-pip' + (i <= pendingPain[col] ? ` on-${pendingPain[col]}` : '');
+      p.title = `Pain ${i}`;
+      p.addEventListener('click', () => {
+        pendingPain[col] = i;
+        renderPainSelects();
+      });
+      wrap.appendChild(p);
+    }
+  });
+}
+
+// ============ ADD ============
+document.querySelectorAll('.add-input').forEach(input => {
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const text = input.value.trim();
+      if (!text) return;
+      const col = input.dataset.add;
+      state.tasks.push({
+        id: uid(),
+        text,
+        col,
+        type: pendingType[col] || 'task',
+        pain: pendingPain[col] || 3,
+        createdAt: nowMs(),
+      });
+      input.value = '';
+      save(); render();
+    }
+  });
+});
+
+// Type toggle clicks
+document.querySelectorAll('.type-toggle').forEach(toggle => {
+  const col = toggle.dataset.typeToggle;
+  toggle.querySelectorAll('.type-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pendingType[col] = btn.dataset.type;
+      toggle.querySelectorAll('.type-toggle-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.type === pendingType[col]);
+      });
+    });
+  });
+});
+
+// ============ DRAG & DROP ============
+document.querySelectorAll('.column').forEach(col => {
+  col.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    col.classList.add('drag-over');
+    e.dataTransfer.dropEffect = 'move';
+  });
+  col.addEventListener('dragleave', (e) => {
+    if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+  });
+  col.addEventListener('drop', (e) => {
+    e.preventDefault();
+    col.classList.remove('drag-over');
+    const id = e.dataTransfer.getData('text/plain');
+    const task = state.tasks.find(t => t.id === id);
+    if (!task) return;
+    const newCol = col.dataset.col;
+    const wasDone = task.col === 'done';
+    const becomingDone = newCol === 'done' && !wasDone;
+    task.col = newCol;
+
+    if (becomingDone) {
+      task.completedAt = nowMs();
+      handleCompletion(task, e.clientX, e.clientY);
+    } else {
+      if (wasDone && newCol !== 'done') task.completedAt = null;
+      save(); render();
+    }
+  });
+});
+
+// ============ COMPLETION (THE JUICE) ============
+function handleCompletion(task, x, y) {
+  const taskEls = document.querySelectorAll('.task');
+  let taskEl = null;
+  taskEls.forEach(el => { if (el.dataset.id === task.id) taskEl = el; });
+
+  state.totalDone += 1;
+  const isQuest = task.type === 'quest';
+  const xpGain = xpForPain(task.pain, task.type);
+  state.xp += xpGain;
+
+  let leveled = false;
+  while (state.xp >= xpForLevel(state.level)) {
+    state.xp -= xpForLevel(state.level);
+    state.level += 1;
+    leveled = true;
+  }
+
+  let originX = x, originY = y;
+  if (taskEl) {
+    const r = taskEl.getBoundingClientRect();
+    originX = r.left + r.width / 2;
+    originY = r.top + r.height / 2;
+    taskEl.classList.add('checking-off');
+  }
+
+  // Quests get bigger celebration — more particles, accent-color dominant
+  const particleCount = isQuest ? 30 + task.pain * 6 : 10 + task.pain * 4;
+  burstParticles(originX, originY, particleCount, task.pain, isQuest);
+  floatXP(originX, originY, xpGain, isQuest);
+  bumpStat('levelValue');
+
+  // Cat reacts to completion — bounce + show mood tag briefly
+  const catFrame = document.getElementById('catFrame');
+  const companion = document.getElementById('catCompanion');
+  catFrame.classList.remove('bounce');
+  void catFrame.offsetWidth;
+  catFrame.classList.add('bounce');
+  companion.classList.add('show-tag');
+  setTimeout(() => catFrame.classList.remove('bounce'), 500);
+  setTimeout(() => companion.classList.remove('show-tag'), 2000);
+
+  save();
+  setTimeout(() => {
+    render();
+    if (leveled) showLevelToast(state.level);
+  }, 400);
+}
+
+function burstParticles(x, y, count, pain, isQuest) {
+  const layer = document.getElementById('particleLayer');
+  const painColor = `var(--pain-${pain || 3})`;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+    const dist = (isQuest ? 80 : 60) + Math.random() * 80 + pain * 8;
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    // Quest: accent dominant. Task: mix accent and pain color.
+    if (isQuest) {
+      if (i % 4 === 0) {
+        p.style.background = painColor;
+        p.style.boxShadow = `0 0 8px ${painColor}`;
+      }
+      // Quest particles are slightly bigger
+      p.style.width = '8px';
+      p.style.height = '8px';
+    } else if (i % 3 === 0) {
+      p.style.background = painColor;
+      p.style.boxShadow = `0 0 8px ${painColor}`;
+    }
+    layer.appendChild(p);
+    setTimeout(() => p.remove(), 1000);
+  }
+}
+
+function floatXP(x, y, amount, isQuest) {
+  const pop = document.createElement('div');
+  pop.className = 'xp-pop' + (isQuest ? ' quest' : '');
+  pop.textContent = `+${amount} xp`;
+  pop.style.left = x + 'px';
+  pop.style.top = y + 'px';
+  document.body.appendChild(pop);
+  setTimeout(() => pop.remove(), 1500);
+}
+
+function bumpStat(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('bump');
+  void el.offsetWidth;
+  el.classList.add('bump');
+  setTimeout(() => el.classList.remove('bump'), 500);
+}
+
+function showLevelToast(lvl) {
+  const toast = document.getElementById('levelToast');
+  document.getElementById('ltValue').textContent = lvl;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1800);
+}
+
+// ============ RESET ============
+document.getElementById('resetBtn').addEventListener('click', async () => {
+  if (!confirm('Wipe all tasks and progress?')) return;
+  state = { tasks: [], xp: 0, level: 1, totalDone: 0 };
+  await save();
+  render();
+});
+
+// ============ CAT COMPANION ============
+function catMoodFor(painWeek) {
+  if (painWeek >= 19) return { mood: 'thriving', label: 'thriving' };
+  if (painWeek >= 9)  return { mood: 'happy',    label: 'happy' };
+  if (painWeek >= 3)  return { mood: 'content',  label: 'content' };
+  return                       { mood: 'sleepy',   label: 'sleepy' };
+}
+
+function updateCatMood(painWeek) {
+  const { mood, label } = catMoodFor(painWeek);
+  const frame = document.getElementById('catFrame');
+  const tag = document.getElementById('catMoodTag');
+  frame.classList.remove('mood-sleepy','mood-content','mood-happy','mood-thriving');
+  frame.classList.add('mood-' + mood);
+  tag.classList.remove('sleepy','content','happy','thriving');
+  tag.classList.add(mood);
+  tag.textContent = label;
+}
+
+// Click the cat for a little bounce + briefly show the mood tag
+document.getElementById('catFrame').addEventListener('click', () => {
+  const frame = document.getElementById('catFrame');
+  const companion = document.getElementById('catCompanion');
+  frame.classList.remove('bounce');
+  void frame.offsetWidth;
+  frame.classList.add('bounce');
+  companion.classList.add('show-tag');
+  setTimeout(() => frame.classList.remove('bounce'), 500);
+  setTimeout(() => companion.classList.remove('show-tag'), 1800);
+});
+
+// ============ BOOT ============
+(async () => {
+  await load();
+  render();
+})();
+</script>
+</body>
+</html>
