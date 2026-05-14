@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v12</title>
+<title>Kanban Quest — v20</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -1074,7 +1074,820 @@
     margin: 16px 24px 8px;
   }
 
-  /* Send-to-backlog / restore button on task cards */
+  /* ============ QUEST VIEW ============ */
+  /* Quest container — wraps hero + kanban as one cohesive "place" */
+  .quest-container {
+    background:
+      linear-gradient(180deg, rgba(212, 255, 58, 0.045) 0%, rgba(212, 255, 58, 0.015) 280px, transparent 600px),
+      var(--bg-soft);
+    border: 1px solid var(--line-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 28px;
+    margin-bottom: 24px;
+    position: relative;
+    box-shadow: 0 0 0 1px rgba(212, 255, 58, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+  /* Subtle "quest seal" — small accent dot top-right corner of container */
+  .quest-container::before {
+    content: '';
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
+    opacity: 0.6;
+  }
+
+  /* Inside the container, the columns get a deeper recessed feel */
+  .quest-container .board {
+    background: transparent;
+  }
+  .quest-container .column {
+    background: rgba(0, 0, 0, 0.18);
+    border-color: var(--line);
+  }
+  .quest-container .column.drag-over {
+    border-color: var(--accent);
+    background: rgba(212, 255, 58, 0.04);
+  }
+  /* Slightly lighter task cards inside the Quest, so they pop against the recessed columns */
+  .quest-container .task {
+    background: var(--bg-card);
+  }
+
+  /* Ambient hint when inside a Quest — subtle accent gradient bleeding from the top */
+  body.in-quest {
+    background:
+      radial-gradient(ellipse at top, rgba(212, 255, 58, 0.09) 0%, transparent 55%),
+      radial-gradient(ellipse at bottom right, rgba(255, 179, 71, 0.03) 0%, transparent 50%),
+      var(--bg);
+  }
+  /* Subtle accent line at the very top of the app when inside a Quest */
+  body.in-quest::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.5;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  /* Breadcrumb */
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    color: var(--ink-faint);
+  }
+  .breadcrumb-back {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 6px 10px;
+    margin-left: -10px;
+    border-radius: 2px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .breadcrumb-back:hover {
+    color: var(--ink);
+    background: var(--bg-soft);
+  }
+  .breadcrumb-back.flash,
+  .view-toggle-btn.flash {
+    animation: nav-flash 0.5s ease-out;
+  }
+  @keyframes nav-flash {
+    0%   { background: var(--accent); color: var(--bg); }
+    100% { background: transparent; color: var(--ink-faint); }
+  }
+  .breadcrumb-sep {
+    color: var(--ink-faint);
+    opacity: 0.5;
+  }
+  .breadcrumb-current {
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .breadcrumb-current::before {
+    content: '◆';
+    font-size: 9px;
+  }
+
+  /* Quest hero card — the "you are here" panel.
+     Inside the container it loses its card chrome and reads as the container's header */
+  .quest-hero {
+    background: transparent;
+    border: none;
+    border-left: none;
+    border-radius: 0;
+    padding: 0 0 24px 0;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--line-soft);
+    position: relative;
+    transition: box-shadow 0.4s, border-color 0.4s;
+  }
+  .quest-hero.ready {
+    box-shadow: none;
+    animation: ready-pulse 3s ease-in-out infinite;
+  }
+  @keyframes ready-pulse {
+    0%, 100% { border-bottom-color: var(--line-soft); }
+    50%      { border-bottom-color: rgba(212, 255, 58, 0.4); }
+  }
+  /* The container itself glows when Quest is ready */
+  .quest-container.ready {
+    box-shadow: 0 0 40px rgba(212, 255, 58, 0.12), 0 0 0 1px rgba(212, 255, 58, 0.15);
+    animation: container-ready-pulse 3s ease-in-out infinite;
+  }
+  @keyframes container-ready-pulse {
+    0%, 100% { box-shadow: 0 0 40px rgba(212, 255, 58, 0.12), 0 0 0 1px rgba(212, 255, 58, 0.15); }
+    50%      { box-shadow: 0 0 60px rgba(212, 255, 58, 0.2),  0 0 0 1px rgba(212, 255, 58, 0.3); }
+  }
+
+  .quest-hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .quest-hero-eyebrow::before {
+    content: '◆';
+    font-size: 8px;
+  }
+  .quest-hero.ready .quest-hero-eyebrow {
+    color: var(--accent);
+  }
+  .quest-hero-ready-tag {
+    display: none;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 2px 8px;
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    margin-left: 8px;
+  }
+  .quest-hero.ready .quest-hero-ready-tag {
+    display: inline-block;
+  }
+
+  .quest-hero-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 32px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 12px;
+    cursor: text;
+    border-radius: 2px;
+    padding: 2px 6px;
+    margin-left: -6px;
+    transition: background 0.15s;
+  }
+  .quest-hero-title:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .quest-hero-title[contenteditable="true"] {
+    outline: none;
+    background: rgba(212, 255, 58, 0.05);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+
+  .quest-hero-desc {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    margin-bottom: 18px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    cursor: text;
+    border-radius: 2px;
+    padding: 4px 6px;
+    margin-left: -6px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .quest-hero-desc:hover {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--ink);
+  }
+  .quest-hero-desc.empty {
+    color: var(--ink-faint);
+  }
+  .quest-hero-desc-edit {
+    width: 100%;
+    background: rgba(212, 255, 58, 0.04);
+    border: none;
+    box-shadow: inset 0 0 0 1px var(--accent);
+    border-radius: 2px;
+    padding: 10px 12px;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 70px;
+    margin-bottom: 18px;
+  }
+  .quest-hero-desc-edit:focus { outline: none; }
+
+  .quest-hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .quest-hero-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .quest-hero-meta-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .quest-hero-meta-value {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  /* Pain pips inside hero — larger */
+  .quest-hero .pain-pips .pip {
+    width: 18px;
+    height: 5px;
+  }
+
+  /* Progress bar */
+  .quest-progress {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .quest-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .quest-progress-bar {
+    height: 3px;
+    background: var(--line-soft);
+    position: relative;
+    overflow: hidden;
+    border-radius: 2px;
+  }
+  .quest-progress-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: linear-gradient(90deg, var(--accent), var(--accent-warm));
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 0 8px rgba(212, 255, 58, 0.4);
+  }
+
+  /* Complete-Quest button */
+  .quest-complete-btn {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+  .quest-complete-btn:hover {
+    border-color: var(--ink-faint);
+    color: var(--ink);
+  }
+  .quest-hero.ready .quest-complete-btn {
+    border-color: var(--accent);
+    color: var(--bg);
+    background: var(--accent);
+    box-shadow: 0 0 20px rgba(212, 255, 58, 0.3);
+  }
+  .quest-hero.ready .quest-complete-btn:hover {
+    background: var(--accent-warm);
+    border-color: var(--accent-warm);
+  }
+  .quest-hero-delete {
+    position: absolute;
+    top: 0;
+    right: 24px;
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.2s;
+    z-index: 2;
+  }
+  .quest-hero-delete:hover { color: var(--accent-warm); }
+
+  /* Quest card on main board — clickable indicator */
+  .task.is-quest.is-quest-clickable {
+    cursor: pointer;
+  }
+  .task.is-quest .quest-mini-progress {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .task.has-unlink .task-text {
+    padding-right: 100px;
+  }
+
+  /* Quest card as a drop target — when a task is being dragged over it */
+  .task.is-quest.absorb-target {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, rgba(212, 255, 58, 0.15) 0%, rgba(212, 255, 58, 0.04) 100%);
+    box-shadow: 0 0 24px rgba(212, 255, 58, 0.25), inset 0 0 0 1px rgba(212, 255, 58, 0.4);
+    transform: scale(1.02);
+  }
+  .task.is-quest.absorb-target::after {
+    content: '+ link to this Quest';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--bg);
+    background: var(--accent);
+    padding: 3px 10px;
+    border-radius: 2px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    z-index: 5;
+  }
+
+  .task-unlink {
+    position: absolute;
+    top: 10px;
+    right: 76px;
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+  }
+  .task:hover .task-unlink { opacity: 1; }
+  .task-unlink:hover { color: var(--accent); }
+
+  /* ============ FOCUS MODE ============ */
+  .focus-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background:
+      radial-gradient(ellipse at top, rgba(212, 255, 58, 0.05) 0%, transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(255, 179, 71, 0.04) 0%, transparent 50%),
+      var(--bg);
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .focus-overlay.show { display: flex; }
+  .focus-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  .focus-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 48px;
+    position: relative;
+    z-index: 2;
+  }
+  .focus-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .focus-eyebrow::before {
+    content: '◉';
+    font-size: 9px;
+    color: var(--accent);
+  }
+  .focus-timer {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--ink-dim);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .focus-timer-elapsed { color: var(--ink); }
+  .focus-timer-next { color: var(--ink-faint); }
+  .focus-exit {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+  .focus-exit:hover {
+    border-color: var(--ink-faint);
+    color: var(--ink);
+  }
+
+  .focus-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 48px 200px;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+    position: relative;
+    z-index: 2;
+  }
+  .focus-title {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 64px;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    text-align: center;
+    margin-bottom: 32px;
+    word-break: break-word;
+  }
+  .focus-desc {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.7;
+    color: var(--ink-dim);
+    text-align: center;
+    max-width: 640px;
+    white-space: pre-wrap;
+    margin-bottom: 40px;
+  }
+  .focus-desc.empty {
+    color: var(--ink-faint);
+    font-size: 16px;
+  }
+
+  .focus-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .focus-action-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+  .focus-action-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .focus-action-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+  .focus-action-btn.primary:hover {
+    background: var(--accent-warm);
+    border-color: var(--accent-warm);
+    color: var(--bg);
+  }
+
+  .focus-log {
+    margin-top: 56px;
+    width: 100%;
+    max-width: 520px;
+  }
+  .focus-log-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .focus-log-entry {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    padding: 8px 12px;
+    border-left: 2px solid var(--line);
+    margin-bottom: 6px;
+  }
+  .focus-log-entry .ts {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--ink-faint);
+    margin-right: 10px;
+  }
+
+  /* Cat companion — working pose in bottom-right corner */
+  .focus-cat {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 210;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .focus-cat-frame {
+    width: 160px;
+    height: 160px;
+    position: relative;
+    cursor: default;
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4));
+  }
+  .focus-cat-frame.pat-ready { cursor: pointer; }
+  .focus-cat-frame svg { width: 100%; height: 100%; overflow: visible; }
+
+  .focus-cat-body {
+    transform-origin: center 80%;
+    animation: focus-cat-sway 5s ease-in-out infinite;
+  }
+  @keyframes focus-cat-sway {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(0.6deg); }
+  }
+  .focus-cat-pen-group {
+    transform-origin: 78px 95px;
+    animation: focus-cat-scribble 0.7s linear infinite;
+  }
+  @keyframes focus-cat-scribble {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    25%  { transform: translate(2px, -1px) rotate(3deg); }
+    50%  { transform: translate(-1px, 1px) rotate(-2deg); }
+    75%  { transform: translate(1px, -2px) rotate(2deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
+  .focus-cat-ink {
+    opacity: 0;
+    animation: focus-cat-ink-fade 4s ease-in-out infinite;
+  }
+  .focus-cat-ink:nth-child(2) { animation-delay: 1.3s; }
+  .focus-cat-ink:nth-child(3) { animation-delay: 2.6s; }
+  @keyframes focus-cat-ink-fade {
+    0%   { opacity: 0; }
+    40%  { opacity: 0.65; }
+    100% { opacity: 0; }
+  }
+  .focus-cat-frame.pat-ready .focus-cat-pen-group,
+  .focus-cat-frame.pat-ready .focus-cat-ink {
+    animation: none;
+  }
+  .focus-cat-frame.pat-ready .focus-cat-pen-group {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  .focus-cat-head {
+    transform-origin: 78px 70px;
+    transition: transform 0.5s ease-out;
+  }
+  .focus-cat-frame.pat-ready .focus-cat-head {
+    transform: rotate(-6deg) translateY(-3px);
+  }
+  .focus-cat-eye-writing,
+  .focus-cat-eye-looking { transition: opacity 0.3s; }
+  .focus-cat-frame .focus-cat-eye-looking { opacity: 0; }
+  .focus-cat-frame.pat-ready .focus-cat-eye-writing { opacity: 0; }
+  .focus-cat-frame.pat-ready .focus-cat-eye-looking { opacity: 1; }
+
+  .focus-cat-pat-indicator {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--bg-card);
+    border: 1px solid var(--accent);
+    padding: 5px 11px;
+    border-radius: 2px;
+    box-shadow: 0 0 16px rgba(212, 255, 58, 0.3);
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    animation: focus-cat-pulse 1.8s ease-in-out infinite;
+  }
+  .focus-cat.pat-ready .focus-cat-pat-indicator {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  @keyframes focus-cat-pulse {
+    0%, 100% { box-shadow: 0 0 16px rgba(212, 255, 58, 0.3); }
+    50%      { box-shadow: 0 0 28px rgba(212, 255, 58, 0.55); }
+  }
+
+  .focus-snippet {
+    position: fixed;
+    bottom: 200px;
+    right: 24px;
+    z-index: 220;
+    width: 320px;
+    background: var(--bg-card);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 16px 18px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(212, 255, 58, 0.15);
+    display: none;
+  }
+  .focus-snippet.show {
+    display: block;
+    animation: focus-snippet-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes focus-snippet-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .focus-snippet-prompt {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .focus-snippet-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--line);
+    padding: 6px 0;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 14px;
+  }
+  .focus-snippet-input:focus {
+    outline: none;
+    border-bottom-color: var(--accent);
+  }
+  .focus-snippet-input::placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+  .focus-snippet-hint {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 900px) {
+    .focus-topbar { padding: 16px 20px; }
+    .focus-content { padding: 24px 20px 200px; }
+    .focus-title { font-size: 40px; }
+    .focus-desc { font-size: 16px; }
+    .focus-cat-frame { width: 120px; height: 120px; }
+    .focus-snippet {
+      bottom: 150px;
+      right: 16px;
+      left: 16px;
+      width: auto;
+    }
+  }
+
+  .quest-mini-bar {
+    flex: 1;
+    height: 2px;
+    background: var(--line-soft);
+    border-radius: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+  .quest-mini-bar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--accent);
+    transition: width 0.4s;
+  }
+  .quest-mini-count {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--ink-faint);
+  }
+  .task.is-quest.has-ready-tasks .quest-mini-count {
+    color: var(--accent);
+  }
+  .quest-open-hint {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .task.is-quest:hover .quest-open-hint {
+    opacity: 1;
+    color: var(--accent);
+  }
+
+  @media (max-width: 900px) {
+    .quest-container { padding: 20px 16px; }
+    .quest-hero { padding: 0 0 20px 0; }
+    .quest-hero-title { font-size: 24px; }
+    .quest-hero-meta { gap: 16px; }
+    .quest-complete-btn { width: 100%; margin-left: 0; margin-top: 12px; }
+    .quest-hero-delete { right: 12px; }
+  }
+
   .task-archive {
     position: absolute;
     top: 10px;
@@ -1153,7 +1966,7 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v12</span>
+      <span class="eyebrow">— Kanban / v20</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <div class="level-block">
@@ -1170,7 +1983,7 @@
     <div class="xp-bar"><div class="xp-bar-fill" id="xpFill" style="width:0%"></div></div>
   </div>
 
-  <div class="view-toggle">
+  <div class="view-toggle" id="viewToggle">
     <button class="view-toggle-btn active" data-view="active">
       Active <span class="count" id="activeCount">0</span>
     </button>
@@ -1280,6 +2093,83 @@
       </div>
     </div>
     <div class="backlog-body" id="backlogBody"></div>
+  </div>
+
+  <!-- Quest view — shown when a Quest is opened -->
+  <div data-view-target="quest" style="display:none">
+    <div class="breadcrumb">
+      <button class="breadcrumb-back" id="breadcrumbBack">← Quest board</button>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current" id="breadcrumbCurrent"></span>
+    </div>
+
+    <div class="quest-container" id="questContainer">
+      <div class="quest-hero" id="questHero">
+        <button class="quest-hero-delete" id="questHeroDelete">× delete Quest</button>
+        <div class="quest-hero-eyebrow">
+          Quest
+          <span class="quest-hero-ready-tag">objectives complete</span>
+        </div>
+        <div class="quest-hero-title" id="questHeroTitle"></div>
+        <div class="quest-hero-desc" id="questHeroDesc"></div>
+        <div class="quest-hero-meta">
+          <div class="quest-hero-meta-item">
+            <span class="quest-hero-meta-label">Pain</span>
+            <div class="pain-pips" id="questHeroPain"></div>
+          </div>
+          <div class="quest-progress">
+            <div class="quest-progress-meta">
+              <span>Objectives</span>
+              <span id="questHeroProgressText">0 / 0 complete</span>
+            </div>
+            <div class="quest-progress-bar"><div class="quest-progress-fill" id="questHeroProgressFill" style="width:0%"></div></div>
+          </div>
+          <button class="quest-complete-btn" id="questCompleteBtn">Mark Quest done</button>
+        </div>
+      </div>
+
+      <div class="board" id="questBoard">
+        <div class="column" data-quest-col="todo">
+          <div class="column-header">
+            <span class="column-title">Todo</span>
+            <span class="column-count" data-quest-count="todo">0</span>
+          </div>
+          <div class="column-body" data-quest-body="todo"></div>
+          <div class="add-task">
+            <div class="add-row">
+              <input class="add-input" data-add="quest-todo" placeholder="+ new objective…" maxlength="140">
+              <div class="pain-select" data-pain-select="quest-todo">
+                <span class="pain-select-label">Pain</span>
+                <div class="pain-select-pips"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="column" data-quest-col="doing">
+          <div class="column-header">
+            <span class="column-title">In progress</span>
+            <span class="column-count" data-quest-count="doing">0</span>
+          </div>
+          <div class="column-body" data-quest-body="doing"></div>
+          <div class="add-task">
+            <div class="add-row">
+              <input class="add-input" data-add="quest-doing" placeholder="+ in progress…" maxlength="140">
+              <div class="pain-select" data-pain-select="quest-doing">
+                <span class="pain-select-label">Pain</span>
+                <div class="pain-select-pips"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="column" data-quest-col="done">
+          <div class="column-header">
+            <span class="column-title">Done</span>
+            <span class="column-count" data-quest-count="done">0</span>
+          </div>
+          <div class="column-body" data-quest-body="done"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <footer>
@@ -1513,6 +2403,150 @@
   </div>
 </div>
 
+<!-- Focus mode overlay -->
+<div class="focus-overlay" id="focusOverlay">
+  <div class="focus-topbar">
+    <span class="focus-eyebrow">Focus mode</span>
+    <span class="focus-timer">
+      <span class="focus-timer-elapsed" id="focusTimerElapsed">0:00</span>
+      <span class="focus-timer-next" id="focusTimerNext">next check-in in 15:00</span>
+    </span>
+    <button class="focus-exit" id="focusExit">Exit · esc</button>
+  </div>
+  <div class="focus-content">
+    <h1 class="focus-title" id="focusTitle"></h1>
+    <div class="focus-desc" id="focusDesc"></div>
+    <div class="focus-actions">
+      <button class="focus-action-btn primary" id="focusMarkDone">Mark task done</button>
+    </div>
+    <div class="focus-log" id="focusLog" style="display:none">
+      <div class="focus-log-label">Session notes</div>
+      <div id="focusLogList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Working cat companion (only shows in focus mode) -->
+<div class="focus-cat" id="focusCat" style="display:none">
+  <span class="focus-cat-pat-indicator">pat me — 15min check-in</span>
+  <div class="focus-cat-frame" id="focusCatFrame">
+    <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+      <g class="focus-cat-body">
+        <!-- Tail curled around behind -->
+        <path d="M 115 130 Q 130 125 132 110 Q 130 100 122 102"
+              fill="none" stroke="var(--cat-body-dark)" stroke-width="11" stroke-linecap="round"/>
+        <path d="M 115 130 Q 130 125 132 110 Q 130 100 122 102"
+              fill="none" stroke="var(--cat-body)" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="122" cy="102" r="5" fill="var(--cat-belly)"/>
+
+        <!-- Body (sitting, hunched forward over the desk) -->
+        <ellipse cx="78" cy="120" rx="36" ry="26" fill="var(--cat-body-dark)"/>
+        <ellipse cx="78" cy="118" rx="34" ry="24" fill="var(--cat-body)"/>
+        <!-- Belly -->
+        <ellipse cx="76" cy="128" rx="22" ry="13" fill="var(--cat-belly)"/>
+
+        <!-- Body stripes -->
+        <path d="M 60 110 Q 64 107 68 110" stroke="var(--cat-stripe)" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.5"/>
+        <path d="M 88 110 Q 92 107 96 110" stroke="var(--cat-stripe)" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.5"/>
+
+        <!-- Notebook/page on the "desk" in front of the cat -->
+        <rect x="50" y="118" width="60" height="22" rx="2" fill="#f6efe2" stroke="#d8cdb5" stroke-width="1"/>
+        <!-- Ruled lines on the notebook -->
+        <line x1="56" y1="124" x2="104" y2="124" stroke="#c8bea8" stroke-width="0.7"/>
+        <line x1="56" y1="130" x2="104" y2="130" stroke="#c8bea8" stroke-width="0.7"/>
+        <line x1="56" y1="136" x2="104" y2="136" stroke="#c8bea8" stroke-width="0.7"/>
+        <!-- Ink scribbles (animated fading in/out) -->
+        <path class="focus-cat-ink" d="M 58 123 Q 64 122 70 124 Q 78 121 86 124" stroke="#1a1a1d" stroke-width="0.9" fill="none"/>
+        <path class="focus-cat-ink" d="M 58 129 Q 65 127 72 129 Q 80 127 88 130" stroke="#1a1a1d" stroke-width="0.9" fill="none"/>
+        <path class="focus-cat-ink" d="M 58 135 Q 64 134 70 135" stroke="#1a1a1d" stroke-width="0.9" fill="none"/>
+
+        <!-- Front paws holding pen (the pen-group animates the scribble) -->
+        <g class="focus-cat-pen-group">
+          <!-- Left paw resting on notebook -->
+          <ellipse cx="64" cy="124" rx="8" ry="5" fill="var(--cat-body-dark)"/>
+          <ellipse cx="64" cy="123" rx="7" ry="4" fill="var(--cat-body)"/>
+          <!-- Right paw with pen -->
+          <ellipse cx="86" cy="122" rx="8" ry="5" fill="var(--cat-body-dark)"/>
+          <ellipse cx="86" cy="121" rx="7" ry="4" fill="var(--cat-body)"/>
+          <!-- The pen itself -->
+          <line x1="88" y1="120" x2="78" y2="98" stroke="#2b2b30" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="79" cy="100" r="1.3" fill="var(--accent-warm)"/>
+        </g>
+
+        <!-- Head (hunched forward over the page) -->
+        <g class="focus-cat-head">
+          <!-- Head shape -->
+          <ellipse cx="78" cy="80" rx="30" ry="26" fill="var(--cat-body-dark)"/>
+          <ellipse cx="78" cy="79" rx="28" ry="24" fill="var(--cat-body)"/>
+
+          <!-- Cheek fluff -->
+          <path d="M 48 80 Q 45 85 49 90 Q 53 87 54 84 Z" fill="var(--cat-body-dark)"/>
+          <path d="M 49 81 Q 47 85 50 88 Q 53 86 54 84 Z" fill="var(--cat-body)"/>
+          <path d="M 108 80 Q 111 85 107 90 Q 103 87 102 84 Z" fill="var(--cat-body-dark)"/>
+          <path d="M 107 81 Q 109 85 106 88 Q 103 86 102 84 Z" fill="var(--cat-body)"/>
+
+          <!-- Forehead fluff -->
+          <path d="M 68 55 Q 73 53 78 56 Q 83 53 88 55 Q 85 60 78 60 Q 71 60 68 55 Z"
+                fill="var(--cat-body)" opacity="0.85"/>
+
+          <!-- Stripes -->
+          <path d="M 62 60 Q 65 64 62 68" stroke="var(--cat-stripe)" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.55"/>
+          <path d="M 78 56 Q 78 62 78 65" stroke="var(--cat-stripe)" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.55"/>
+          <path d="M 94 60 Q 91 64 94 68" stroke="var(--cat-stripe)" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.55"/>
+
+          <!-- Ears -->
+          <path d="M 50 64 L 47 44 L 64 58 Z" fill="var(--cat-body-dark)"/>
+          <path d="M 52 62 L 50 48 L 62 58 Z" fill="var(--cat-body)"/>
+          <path d="M 54 58 L 53 50 L 60 57 Z" fill="var(--cat-nose)" opacity="0.55"/>
+          <circle cx="52" cy="50" r="1.5" fill="var(--cat-belly)" opacity="0.8"/>
+
+          <path d="M 106 64 L 109 44 L 92 58 Z" fill="var(--cat-body-dark)"/>
+          <path d="M 104 62 L 106 48 L 94 58 Z" fill="var(--cat-body)"/>
+          <path d="M 102 58 L 103 50 L 96 57 Z" fill="var(--cat-nose)" opacity="0.55"/>
+          <circle cx="104" cy="50" r="1.5" fill="var(--cat-belly)" opacity="0.8"/>
+
+          <!-- Cheek blush -->
+          <ellipse cx="58" cy="87" rx="4.5" ry="2.8" fill="var(--cat-nose)" opacity="0.5"/>
+          <ellipse cx="98" cy="87" rx="4.5" ry="2.8" fill="var(--cat-nose)" opacity="0.5"/>
+
+          <!-- Eyes — writing state (focused, looking down — drawn as small curves pointing down) -->
+          <g class="focus-cat-eye-writing">
+            <path d="M 64 82 Q 67 86 70 82" fill="none" stroke="#1a1a1d" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M 86 82 Q 89 86 92 82" fill="none" stroke="#1a1a1d" stroke-width="2.2" stroke-linecap="round"/>
+          </g>
+
+          <!-- Eyes — looking up state (open, big, friendly — "hello!") -->
+          <g class="focus-cat-eye-looking">
+            <ellipse cx="67" cy="82" rx="3.5" ry="5" fill="#1a1a1d"/>
+            <ellipse cx="89" cy="82" rx="3.5" ry="5" fill="#1a1a1d"/>
+            <circle cx="68.5" cy="80" r="1.3" fill="white"/>
+            <circle cx="90.5" cy="80" r="1.3" fill="white"/>
+          </g>
+
+          <!-- Nose -->
+          <path d="M 75 90 L 81 90 L 78 93 Z" fill="var(--cat-nose)"/>
+          <!-- Tiny content mouth -->
+          <path d="M 78 93 Q 75 96 73 94" fill="none" stroke="#1a1a1d" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M 78 93 Q 81 96 83 94" fill="none" stroke="#1a1a1d" stroke-width="1.4" stroke-linecap="round"/>
+
+          <!-- Whiskers -->
+          <path d="M 50 91 L 36 90" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+          <path d="M 50 94 L 36 96" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+          <path d="M 106 91 L 120 90" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+          <path d="M 106 94 L 120 96" stroke="var(--ink-dim)" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<!-- Snippet prompt popover -->
+<div class="focus-snippet" id="focusSnippet">
+  <div class="focus-snippet-prompt" id="focusSnippetPrompt">How did the last 15 minutes go?</div>
+  <input class="focus-snippet-input" id="focusSnippetInput" placeholder="quick note…" maxlength="200">
+  <div class="focus-snippet-hint">Enter to save · Esc to skip</div>
+</div>
+
 <div class="particle-layer" id="particleLayer"></div>
 <div class="level-toast" id="levelToast">
   <div class="lt-eyebrow">Level up</div>
@@ -1529,12 +2563,16 @@ let state = {
   level: 1,
   totalDone: 0,
 };
-let pendingPain = { todo: 3, doing: 3, backlog: 3 };
+let pendingPain = { todo: 3, doing: 3, backlog: 3, 'quest-todo': 3, 'quest-doing': 3 };
 let pendingType = { todo: 'task', doing: 'task', backlog: 'task' };
 // UI-only: which tasks have their description in edit mode (not persisted)
 let editingDesc = new Set();
-// UI-only: current view ('active' or 'backlog')
+// UI-only: current view ('active' | 'backlog' | 'quest')
 let currentView = 'active';
+// UI-only: when currentView === 'quest', which quest is open
+let currentQuestId = null;
+// UI-only: id of the currently-dragging task (for dragover targets to inspect)
+let currentDraggedTaskId = null;
 
 function xpForLevel(lvl) { return 100 + (lvl - 1) * 50; }
 function xpForPain(p, type) {
@@ -1555,6 +2593,13 @@ async function load() {
       state = { ...state, ...parsed };
     }
   } catch (e) { /* fresh start */ }
+  // Migration (v16): grandfather existing Done tasks as already-awarded so re-shuffling
+  // them doesn't unexpectedly award XP retroactively.
+  state.tasks.forEach(t => {
+    if (t.col === 'done' && t.awarded === undefined) {
+      t.awarded = true;
+    }
+  });
 }
 async function save() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -1626,10 +2671,10 @@ function render() {
   // Cat mood — driven by 7d pain consumed
   updateCatMood(v.painThis);
 
-  // Columns — only show non-backlog tasks in the active board
+  // Columns — main board only shows TOP-LEVEL items (no questId, not backlog)
   ['todo','doing','done'].forEach(col => {
     const body = document.querySelector(`[data-body="${col}"]`);
-    const list = state.tasks.filter(t => t.col === col && !t.backlog);
+    const list = state.tasks.filter(t => t.col === col && !t.backlog && !t.questId);
     document.querySelector(`[data-count="${col}"]`).textContent = list.length;
     body.innerHTML = '';
     if (list.length === 0 && col === 'done') {
@@ -1654,10 +2699,22 @@ function render() {
     backlogList.forEach(t => backlogBody.appendChild(renderTask(t)));
   }
 
-  // View counts
-  const activeTotal = state.tasks.filter(t => !t.backlog).length;
+  // View counts (active = top-level, non-backlog items)
+  const activeTotal = state.tasks.filter(t => !t.backlog && !t.questId).length;
   document.getElementById('activeCount').textContent = activeTotal;
   document.getElementById('backlogCount').textContent = backlogList.length;
+
+  // Quest view — render if active
+  if (currentView === 'quest' && currentQuestId) {
+    renderQuestView();
+  }
+
+  // Hide view-toggle while inside a Quest
+  const viewToggle = document.getElementById('viewToggle');
+  if (viewToggle) viewToggle.style.display = currentView === 'quest' ? 'none' : 'inline-flex';
+
+  // Toggle body class for ambient Quest background
+  document.body.classList.toggle('in-quest', currentView === 'quest');
 
   // View visibility
   document.querySelectorAll('[data-view-target]').forEach(el => {
@@ -1681,13 +2738,73 @@ function renderTask(t) {
   const isQuest = t.type === 'quest';
   const isEditingDesc = editingDesc.has(t.id);
   const hasDesc = t.description && t.description.trim().length > 0;
+  // Quest is "clickable to open" only on the main board (not in backlog or quest view)
+  const isQuestClickable = isQuest && currentView === 'active' && !t.backlog && !t.questId;
+  // Show unlink button when this task is linked to a Quest (only relevant in Quest view)
+  const showUnlink = !isQuest && t.questId && currentView === 'quest';
+  // Compute child task counts for Quests
+  let childTotal = 0, childDone = 0;
+  if (isQuest) {
+    state.tasks.forEach(c => {
+      if (c.questId === t.id) {
+        childTotal++;
+        if (c.col === 'done') childDone++;
+      }
+    });
+  }
+  const allChildrenDone = isQuest && childTotal > 0 && childDone === childTotal;
+
   const el = document.createElement('div');
   el.className = 'task'
     + (t.col === 'done' ? ' done' : '')
     + (isQuest ? ' is-quest' : '')
-    + (isEditingDesc ? ' editing-desc' : '');
-  el.draggable = !isEditingDesc; // disable drag while editing description
+    + (isEditingDesc ? ' editing-desc' : '')
+    + (isQuestClickable ? ' is-quest-clickable' : '')
+    + (allChildrenDone ? ' has-ready-tasks' : '')
+    + (showUnlink ? ' has-unlink' : '');
+  el.draggable = !isEditingDesc;
   el.dataset.id = t.id;
+
+  // Click anywhere on a Quest card (except interactive children) to open Quest view
+  if (isQuestClickable) {
+    el.addEventListener('click', (e) => {
+      // Don't open if click landed on an interactive element
+      if (e.target.closest('button, input, textarea, [contenteditable="true"], .pip, .pain-pips, .task-text, .task-desc-render')) return;
+      openQuest(t.id);
+    });
+
+    // Quest card as a drop target — absorb a dropped task into this Quest
+    el.addEventListener('dragover', (e) => {
+      // Only highlight if the dragged thing isn't this same Quest
+      const draggedId = currentDraggedTaskId;
+      if (!draggedId || draggedId === t.id) return;
+      const dragged = state.tasks.find(x => x.id === draggedId);
+      if (!dragged || dragged.type === 'quest') return; // only tasks can be absorbed
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      el.classList.add('absorb-target');
+    });
+    el.addEventListener('dragleave', (e) => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('absorb-target');
+    });
+    el.addEventListener('drop', (e) => {
+      const draggedId = e.dataTransfer.getData('text/plain');
+      if (!draggedId || draggedId === t.id) return;
+      const dragged = state.tasks.find(x => x.id === draggedId);
+      if (!dragged || dragged.type === 'quest') return;
+      e.preventDefault();
+      e.stopPropagation(); // prevent the column's drop handler from also firing
+      el.classList.remove('absorb-target');
+      // Clear any column drag-over class that may have been set
+      document.querySelectorAll('.column.drag-over').forEach(c => c.classList.remove('drag-over'));
+      // Link the dragged task to this Quest
+      dragged.questId = t.id;
+      // Also clear any backlog flag — linking to a Quest implies it's active
+      dragged.backlog = false;
+      save(); render();
+    });
+  }
 
   // Quest eyebrow label
   if (isQuest) {
@@ -1817,6 +2934,30 @@ function renderTask(t) {
   meta.appendChild(label);
   el.appendChild(meta);
 
+  // Quest mini-progress (only on main-board Quest cards with children)
+  if (isQuest && currentView === 'active' && !t.backlog && !t.questId) {
+    if (childTotal > 0) {
+      const miniWrap = document.createElement('div');
+      miniWrap.className = 'quest-mini-progress';
+      const miniBar = document.createElement('div');
+      miniBar.className = 'quest-mini-bar';
+      const miniFill = document.createElement('div');
+      miniFill.className = 'quest-mini-bar-fill';
+      miniFill.style.width = ((childDone / childTotal) * 100) + '%';
+      miniBar.appendChild(miniFill);
+      const miniCount = document.createElement('span');
+      miniCount.className = 'quest-mini-count';
+      miniCount.textContent = `${childDone} / ${childTotal}`;
+      miniWrap.appendChild(miniBar);
+      miniWrap.appendChild(miniCount);
+      el.appendChild(miniWrap);
+    }
+    const hint = document.createElement('div');
+    hint.className = 'quest-open-hint';
+    hint.textContent = childTotal > 0 ? '→ Open Quest' : '→ Open Quest & add objectives';
+    el.appendChild(hint);
+  }
+
   // Edit-description button (pencil) — opens textarea
   const edit = document.createElement('button');
   edit.className = 'task-edit';
@@ -1854,6 +2995,20 @@ function renderTask(t) {
   });
   el.appendChild(archive);
 
+  // Unlink (extract from Quest, send back to main board) — only on linked tasks in Quest view
+  if (showUnlink) {
+    const unlink = document.createElement('button');
+    unlink.className = 'task-unlink';
+    unlink.textContent = '⤴';
+    unlink.title = 'Unlink from Quest — return to main board';
+    unlink.addEventListener('click', (e) => {
+      e.stopPropagation();
+      t.questId = null;
+      save(); render();
+    });
+    el.appendChild(unlink);
+  }
+
   // Delete button
   const del = document.createElement('button');
   del.className = 'task-del';
@@ -1874,16 +3029,22 @@ function renderTask(t) {
       return;
     }
     el.classList.add('dragging');
+    currentDraggedTaskId = t.id;
     e.dataTransfer.setData('text/plain', t.id);
     e.dataTransfer.effectAllowed = 'move';
   });
-  el.addEventListener('dragend', () => el.classList.remove('dragging'));
+  el.addEventListener('dragend', () => {
+    el.classList.remove('dragging');
+    currentDraggedTaskId = null;
+    // Clean up any lingering absorb-target visuals
+    document.querySelectorAll('.absorb-target').forEach(q => q.classList.remove('absorb-target'));
+  });
 
   return el;
 }
 
 function renderPainSelects() {
-  ['todo','doing','backlog'].forEach(col => {
+  ['todo','doing','backlog','quest-todo','quest-doing'].forEach(col => {
     const wrap = document.querySelector(`[data-pain-select="${col}"] .pain-select-pips`);
     if (!wrap) return;
     wrap.innerHTML = '';
@@ -1908,17 +3069,27 @@ document.querySelectorAll('.add-input').forEach(input => {
       if (!text) return;
       const source = input.dataset.add;
       const isBacklog = source === 'backlog';
-      state.tasks.push({
+      const isQuestInput = source === 'quest-todo' || source === 'quest-doing';
+      const col = isBacklog ? 'todo' : (isQuestInput ? source.replace('quest-','') : source);
+      const isQuestType = isQuestInput ? false : (pendingType[source] === 'quest');
+      const newTask = {
         id: uid(),
         text,
-        col: isBacklog ? 'todo' : source, // backlog items default to Todo if restored
+        col,
         backlog: isBacklog,
-        type: pendingType[source] || 'task',
+        questId: isQuestInput ? currentQuestId : null,
+        // Tasks inside a Quest are always 'task' type (no nested Quests)
+        type: isQuestInput ? 'task' : (pendingType[source] || 'task'),
         pain: pendingPain[source] || 3,
         createdAt: nowMs(),
-      });
+      };
+      state.tasks.push(newTask);
       input.value = '';
       save(); render();
+      // Auto-enter focus if a fresh non-Quest task was added straight to Doing
+      if (col === 'doing' && !isQuestType && !isBacklog) {
+        enterFocus(newTask.id);
+      }
     }
   });
 });
@@ -1962,7 +3133,9 @@ document.querySelectorAll('.column').forEach(col => {
     if (!task) return;
     const newCol = col.dataset.col;
     const wasDone = task.col === 'done';
+    const wasDoing = task.col === 'doing';
     const becomingDone = newCol === 'done' && !wasDone;
+    const becomingDoing = newCol === 'doing' && !wasDoing;
     task.col = newCol;
 
     if (becomingDone) {
@@ -1971,12 +3144,25 @@ document.querySelectorAll('.column').forEach(col => {
     } else {
       if (wasDone && newCol !== 'done') task.completedAt = null;
       save(); render();
+      // Auto-enter focus mode if a regular task just entered Doing
+      if (becomingDoing && task.type !== 'quest') {
+        enterFocus(task.id);
+      }
     }
   });
 });
 
 // ============ COMPLETION (THE JUICE) ============
 function handleCompletion(task, x, y) {
+  // Guard: each task only awards XP / fires juice ONCE in its lifetime.
+  // Moving back to Doing and re-dropping into Done should not re-award.
+  if (task.awarded) {
+    save();
+    render();
+    return;
+  }
+  task.awarded = true;
+
   const taskEls = document.querySelectorAll('.task');
   let taskEl = null;
   taskEls.forEach(el => { if (el.dataset.id === task.id) taskEl = el; });
@@ -2116,6 +3302,538 @@ document.getElementById('catFrame').addEventListener('click', () => {
   companion.classList.add('show-tag');
   setTimeout(() => frame.classList.remove('bounce'), 500);
   setTimeout(() => companion.classList.remove('show-tag'), 1800);
+});
+
+// ============ QUEST VIEW ============
+function openQuest(questId) {
+  currentQuestId = questId;
+  currentView = 'quest';
+  // Scroll to top when entering a Quest
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  render();
+}
+
+function exitQuest() {
+  currentQuestId = null;
+  currentView = 'active';
+  render();
+}
+
+function renderQuestView() {
+  const quest = state.tasks.find(t => t.id === currentQuestId);
+  if (!quest) {
+    exitQuest();
+    return;
+  }
+
+  // Breadcrumb
+  document.getElementById('breadcrumbCurrent').textContent = quest.text;
+
+  // --- TITLE: fresh element each render ---
+  const titleParent = document.getElementById('questHeroTitle').parentNode;
+  const oldTitle = document.getElementById('questHeroTitle');
+  const titleEl = document.createElement('div');
+  titleEl.id = 'questHeroTitle';
+  titleEl.className = 'quest-hero-title';
+  titleEl.textContent = quest.text;
+  titleEl.title = 'Click to edit Quest name';
+  titleEl.addEventListener('click', (e) => {
+    if (titleEl.getAttribute('contenteditable') === 'true') return;
+    e.stopPropagation();
+    titleEl.setAttribute('contenteditable', 'true');
+    titleEl.focus();
+    const range = document.createRange();
+    range.selectNodeContents(titleEl);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+  titleEl.addEventListener('blur', () => {
+    const v = titleEl.textContent.trim();
+    titleEl.removeAttribute('contenteditable');
+    if (!v) { titleEl.textContent = quest.text; return; }
+    if (v !== quest.text) {
+      quest.text = v;
+      save();
+      render();
+    }
+  });
+  titleEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); titleEl.textContent = quest.text; titleEl.blur(); }
+  });
+  titleParent.replaceChild(titleEl, oldTitle);
+
+  // --- DESCRIPTION: fresh element each render ---
+  renderQuestHeroDesc(quest);
+
+  // Hero — pain pips
+  const painPipsEl = document.getElementById('questHeroPain');
+  painPipsEl.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const p = document.createElement('div');
+    p.className = 'pip' + (i <= quest.pain ? ` on-${quest.pain}` : '');
+    p.title = `Set pain to ${i}`;
+    p.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (quest.col === 'done') return;
+      quest.pain = i;
+      save(); render();
+    });
+    painPipsEl.appendChild(p);
+  }
+
+  // Progress
+  const children = state.tasks.filter(t => t.questId === quest.id);
+  const doneCount = children.filter(t => t.col === 'done').length;
+  const total = children.length;
+  const pct = total === 0 ? 0 : (doneCount / total) * 100;
+  document.getElementById('questHeroProgressText').textContent =
+    total === 0 ? 'no objectives yet' : `${doneCount} / ${total} complete`;
+  document.getElementById('questHeroProgressFill').style.width = pct + '%';
+
+  // Ready state — all children done (and there are children)
+  const hero = document.getElementById('questHero');
+  const container = document.getElementById('questContainer');
+  const ready = total > 0 && doneCount === total && quest.col !== 'done';
+  hero.classList.toggle('ready', ready);
+  if (container) container.classList.toggle('ready', ready);
+
+  // Complete button
+  const completeBtn = document.getElementById('questCompleteBtn');
+  completeBtn.textContent = quest.col === 'done' ? 'Quest complete ✓' : 'Mark Quest done';
+  completeBtn.disabled = quest.col === 'done';
+  completeBtn.style.opacity = quest.col === 'done' ? '0.5' : '1';
+
+  // Populate Quest columns
+  ['todo','doing','done'].forEach(col => {
+    const body = document.querySelector(`[data-quest-body="${col}"]`);
+    const list = children.filter(t => t.col === col);
+    document.querySelector(`[data-quest-count="${col}"]`).textContent = list.length;
+    body.innerHTML = '';
+    if (list.length === 0 && col === 'done') {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'drag here to complete';
+      body.appendChild(e);
+    }
+    list.forEach(t => body.appendChild(renderTask(t)));
+  });
+}
+
+function renderQuestHeroDesc(quest) {
+  // Find whatever element currently sits in the description slot (div or textarea)
+  // by stable parent + position rather than id (since id may be on a swapped-in textarea).
+  const oldEl = document.getElementById('questHeroDesc') || document.querySelector('.quest-hero-desc-edit');
+  if (!oldEl) return;
+  const parent = oldEl.parentNode;
+
+  const hasDesc = quest.description && quest.description.trim().length > 0;
+  const descEl = document.createElement('div');
+  descEl.id = 'questHeroDesc';
+  descEl.className = 'quest-hero-desc' + (hasDesc ? '' : ' empty');
+  descEl.textContent = hasDesc
+    ? quest.description
+    : 'Click to add a Quest description — what is the end outcome?';
+  descEl.title = 'Click to edit description';
+
+  descEl.addEventListener('click', () => {
+    // Swap to textarea — but keep an id-less class so we can find it on next render
+    const textarea = document.createElement('textarea');
+    textarea.className = 'quest-hero-desc-edit';
+    textarea.value = quest.description || '';
+    textarea.placeholder = 'What is this Quest about? Goals, context, end outcome…';
+    descEl.parentNode.replaceChild(textarea, descEl);
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    const commit = () => {
+      quest.description = textarea.value.trim();
+      save();
+      render();
+    };
+    textarea.addEventListener('blur', commit);
+    textarea.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        textarea.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        // Revert without saving — just re-render
+        textarea.value = quest.description || '';
+        render();
+      }
+    });
+  });
+
+  parent.replaceChild(descEl, oldEl);
+}
+
+// Breadcrumb back
+document.getElementById('breadcrumbBack').addEventListener('click', exitQuest);
+
+// Quest delete
+document.getElementById('questHeroDelete').addEventListener('click', () => {
+  const quest = state.tasks.find(t => t.id === currentQuestId);
+  if (!quest) return;
+  const children = state.tasks.filter(t => t.questId === quest.id);
+  const msg = children.length > 0
+    ? `Delete this Quest and its ${children.length} objective${children.length === 1 ? '' : 's'}?`
+    : 'Delete this Quest?';
+  if (!confirm(msg)) return;
+  // Remove quest + all children
+  state.tasks = state.tasks.filter(t => t.id !== quest.id && t.questId !== quest.id);
+  exitQuest();
+  save();
+});
+
+// Mark Quest done — completes the Quest and triggers its big celebration
+document.getElementById('questCompleteBtn').addEventListener('click', (e) => {
+  const quest = state.tasks.find(t => t.id === currentQuestId);
+  if (!quest || quest.col === 'done') return;
+  quest.col = 'done';
+  quest.completedAt = nowMs();
+  // Fire the standard completion path so XP, particles, cat, and level handlers all run
+  const rect = e.target.getBoundingClientRect();
+  handleCompletion(quest, rect.left + rect.width / 2, rect.top + rect.height / 2);
+});
+
+// Quest board drag-and-drop — same pattern as main board but uses data-quest-col
+function bindQuestBoardDnD() {
+  document.querySelectorAll('[data-quest-col]').forEach(col => {
+    if (col.dataset.dndBound) return;
+    col.dataset.dndBound = '1';
+    col.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      col.classList.add('drag-over');
+      e.dataTransfer.dropEffect = 'move';
+    });
+    col.addEventListener('dragleave', (e) => {
+      if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+    });
+    col.addEventListener('drop', (e) => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      const task = state.tasks.find(t => t.id === id);
+      if (!task) return;
+      // Only allow drops if the task belongs to the current quest (don't accidentally pull in main-board tasks)
+      if (task.questId !== currentQuestId) return;
+      const newCol = col.dataset.questCol;
+      const wasDone = task.col === 'done';
+      const wasDoing = task.col === 'doing';
+      const becomingDone = newCol === 'done' && !wasDone;
+      const becomingDoing = newCol === 'doing' && !wasDoing;
+      task.col = newCol;
+      if (becomingDone) {
+        task.completedAt = nowMs();
+        handleCompletion(task, e.clientX, e.clientY);
+      } else {
+        if (wasDone && newCol !== 'done') task.completedAt = null;
+        save(); render();
+        // Auto-enter focus when a non-Quest task lands in Doing
+        if (becomingDoing && task.type !== 'quest') {
+          enterFocus(task.id);
+        }
+      }
+    });
+  });
+}
+bindQuestBoardDnD();
+
+// ============ FOCUS MODE ============
+// Web Audio context — created lazily on first user interaction (autoplay rules)
+let focusAudioCtx = null;
+function getAudioCtx() {
+  if (!focusAudioCtx) {
+    try {
+      focusAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) { /* no audio support */ }
+  }
+  return focusAudioCtx;
+}
+
+// Soft two-note meow synthesized via filtered oscillators.
+// Approximates a "mrr-ow" — short rising-then-falling pitch sweep + a quick second syllable.
+function playMeow() {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  // Resume context if it was suspended (some browsers do this after long inactivity)
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  const now = ctx.currentTime;
+
+  // Master gain (softens everything)
+  const master = ctx.createGain();
+  master.gain.value = 0.18;
+  master.connect(ctx.destination);
+
+  // Lowpass to make it round and warm, not nasal
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 1400;
+  filter.Q.value = 4;
+  filter.connect(master);
+
+  // Two stacked oscillators for body — fundamental + subtle 5th
+  const o1 = ctx.createOscillator();
+  o1.type = 'triangle';
+  const o2 = ctx.createOscillator();
+  o2.type = 'sine';
+
+  // Pitch envelope — quick rise from ~520Hz to ~700Hz, fall to ~480Hz
+  const baseStart = 520;
+  o1.frequency.setValueAtTime(baseStart, now);
+  o1.frequency.linearRampToValueAtTime(700, now + 0.08);
+  o1.frequency.linearRampToValueAtTime(480, now + 0.42);
+  o2.frequency.setValueAtTime(baseStart * 1.5, now);
+  o2.frequency.linearRampToValueAtTime(700 * 1.5, now + 0.08);
+  o2.frequency.linearRampToValueAtTime(480 * 1.5, now + 0.42);
+
+  // Amplitude envelope — soft attack, gentle decay
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0, now);
+  env.gain.linearRampToValueAtTime(0.9, now + 0.05);
+  env.gain.linearRampToValueAtTime(0.4, now + 0.18);
+  env.gain.linearRampToValueAtTime(0, now + 0.55);
+
+  o1.connect(env);
+  o2.connect(env);
+  env.connect(filter);
+
+  o1.start(now);
+  o2.start(now);
+  o1.stop(now + 0.6);
+  o2.stop(now + 0.6);
+}
+
+let focusTaskId = null;
+let focusStartTs = 0;
+let focusLastCheckpoint = 0;
+let focusTimerInterval = null;
+const FOCUS_CHECKPOINT_MS = 15 * 60 * 1000; // 15 minutes
+
+function enterFocus(taskId) {
+  const t = state.tasks.find(x => x.id === taskId);
+  if (!t) return;
+  focusTaskId = taskId;
+  focusStartTs = nowMs();
+  focusLastCheckpoint = focusStartTs;
+  renderFocus();
+  document.getElementById('focusOverlay').classList.add('show');
+  document.getElementById('focusCat').style.display = 'flex';
+  document.getElementById('focusCat').classList.remove('pat-ready');
+  document.getElementById('focusCatFrame').classList.remove('pat-ready');
+  // Hide cat from main app since the focus cat takes over
+  const mainCat = document.getElementById('catCompanion');
+  if (mainCat) mainCat.style.display = 'none';
+  // Lock body scroll
+  document.body.style.overflow = 'hidden';
+  // Start the timer
+  startFocusTimer();
+}
+
+function exitFocus() {
+  focusTaskId = null;
+  if (focusTimerInterval) {
+    clearInterval(focusTimerInterval);
+    focusTimerInterval = null;
+  }
+  document.getElementById('focusOverlay').classList.remove('show');
+  document.getElementById('focusCat').style.display = 'none';
+  document.getElementById('focusCat').classList.remove('pat-ready');
+  document.getElementById('focusCatFrame').classList.remove('pat-ready');
+  document.getElementById('focusSnippet').classList.remove('show');
+  // Restore main cat
+  const mainCat = document.getElementById('catCompanion');
+  if (mainCat) mainCat.style.display = '';
+  // Unlock body scroll
+  document.body.style.overflow = '';
+  // Re-render to surface any new log entries on the task description
+  render();
+}
+
+function renderFocus() {
+  const t = state.tasks.find(x => x.id === focusTaskId);
+  if (!t) { exitFocus(); return; }
+  document.getElementById('focusTitle').textContent = t.text;
+  const descEl = document.getElementById('focusDesc');
+  const hasDesc = t.description && t.description.trim().length > 0;
+  descEl.textContent = hasDesc ? t.description : 'No description — just you and the task.';
+  descEl.classList.toggle('empty', !hasDesc);
+
+  // Log
+  const logList = document.getElementById('focusLogList');
+  const logWrap = document.getElementById('focusLog');
+  const entries = t.focusLog || [];
+  if (entries.length === 0) {
+    logWrap.style.display = 'none';
+  } else {
+    logWrap.style.display = 'block';
+    logList.innerHTML = '';
+    entries.forEach(entry => {
+      const div = document.createElement('div');
+      div.className = 'focus-log-entry';
+      const ts = document.createElement('span');
+      ts.className = 'ts';
+      ts.textContent = formatFocusTime(entry.time - focusStartTs);
+      const text = document.createTextNode(entry.note);
+      div.appendChild(ts);
+      div.appendChild(text);
+      logList.appendChild(div);
+    });
+  }
+}
+
+function formatFocusTime(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
+function startFocusTimer() {
+  if (focusTimerInterval) clearInterval(focusTimerInterval);
+  const tick = () => {
+    if (!focusTaskId) return;
+    const elapsed = nowMs() - focusStartTs;
+    document.getElementById('focusTimerElapsed').textContent = formatFocusTime(elapsed);
+    const sinceCheckpoint = nowMs() - focusLastCheckpoint;
+    const untilNext = FOCUS_CHECKPOINT_MS - sinceCheckpoint;
+    const nextEl = document.getElementById('focusTimerNext');
+    const catFrame = document.getElementById('focusCatFrame');
+    const catWrap = document.getElementById('focusCat');
+    if (untilNext <= 0) {
+      nextEl.textContent = 'check-in ready';
+      if (!catFrame.classList.contains('pat-ready')) {
+        catFrame.classList.add('pat-ready');
+        catWrap.classList.add('pat-ready');
+        // Soft meow — only on the transition into pat-ready, not every tick
+        playMeow();
+      }
+    } else {
+      nextEl.textContent = `next check-in in ${formatFocusTime(untilNext)}`;
+    }
+  };
+  tick();
+  focusTimerInterval = setInterval(tick, 1000);
+}
+
+// Cat click — open snippet prompt if pat-ready
+document.getElementById('focusCatFrame').addEventListener('click', () => {
+  const catFrame = document.getElementById('focusCatFrame');
+  if (!catFrame.classList.contains('pat-ready')) return;
+  const snippet = document.getElementById('focusSnippet');
+  snippet.classList.add('show');
+  const input = document.getElementById('focusSnippetInput');
+  input.value = '';
+  setTimeout(() => input.focus(), 50);
+});
+
+// Snippet save / cancel
+const snippetInput = document.getElementById('focusSnippetInput');
+snippetInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const v = snippetInput.value.trim();
+    const t = state.tasks.find(x => x.id === focusTaskId);
+    if (t) {
+      if (!t.focusLog) t.focusLog = [];
+      if (v) {
+        t.focusLog.push({ time: nowMs(), note: v });
+      }
+      // Also fold the note into the task description for visibility outside focus mode
+      if (v) {
+        const stamp = `[+${formatFocusTime(nowMs() - focusStartTs)}]`;
+        const existing = (t.description || '').trim();
+        t.description = existing
+          ? `${existing}\n${stamp} ${v}`
+          : `${stamp} ${v}`;
+      }
+      save();
+    }
+    // Reset checkpoint regardless of whether they wrote anything
+    focusLastCheckpoint = nowMs();
+    document.getElementById('focusCatFrame').classList.remove('pat-ready');
+    document.getElementById('focusCat').classList.remove('pat-ready');
+    document.getElementById('focusSnippet').classList.remove('show');
+    renderFocus();
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    // Skip — reset checkpoint without saving
+    focusLastCheckpoint = nowMs();
+    document.getElementById('focusCatFrame').classList.remove('pat-ready');
+    document.getElementById('focusCat').classList.remove('pat-ready');
+    document.getElementById('focusSnippet').classList.remove('show');
+  }
+});
+
+// Exit focus button + Esc
+document.getElementById('focusExit').addEventListener('click', exitFocus);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && focusTaskId) {
+    // Don't exit if snippet is open — let the snippet's own Esc handler run first
+    if (document.getElementById('focusSnippet').classList.contains('show')) return;
+    exitFocus();
+  }
+});
+
+// Mark done from focus mode
+document.getElementById('focusMarkDone').addEventListener('click', (e) => {
+  const t = state.tasks.find(x => x.id === focusTaskId);
+  if (!t) return;
+  t.col = 'done';
+  t.completedAt = nowMs();
+  // Fire completion juice anchored at the button's center
+  const rect = e.target.getBoundingClientRect();
+  handleCompletion(t, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  // Exit a moment later so the user sees a flash of the celebration before returning
+  setTimeout(() => exitFocus(), 600);
+});
+
+// ============ RIGHT-CLICK BACK NAVIGATION ============
+// Right-click on empty board space goes back one level (Diablo-style).
+// Quest view → Active board. Backlog view → Active board.
+// Active view → no-op (allow normal context menu).
+document.addEventListener('contextmenu', (e) => {
+  // Skip if we're already on the active board — nowhere to go back to
+  if (currentView === 'active') return;
+
+  // Don't hijack right-click on interactive or text elements.
+  // Users still need normal context menu for selecting/copying text,
+  // and right-click on buttons/inputs should keep default behavior.
+  const blockedSelectors = [
+    'button', 'input', 'textarea', 'select', 'a',
+    '[contenteditable="true"]',
+    '.task-text', '.task-desc-render', '.task-desc',
+    '.quest-hero-title', '.quest-hero-desc', '.quest-hero-desc-edit',
+    '.pip', '.ps-pip',
+  ].join(',');
+  if (e.target.closest(blockedSelectors)) return;
+
+  // Only act when the click is somewhere inside the current view's container
+  const viewContainer = document.querySelector(`[data-view-target="${currentView}"]`);
+  if (!viewContainer || !viewContainer.contains(e.target)) return;
+
+  // It's a "back" gesture — prevent the default context menu and navigate back
+  e.preventDefault();
+
+  let flashEl = null;
+  if (currentView === 'quest') {
+    flashEl = document.getElementById('breadcrumbBack');
+    exitQuest();
+  } else if (currentView === 'backlog') {
+    flashEl = document.querySelector('.view-toggle-btn[data-view="active"]');
+    currentView = 'active';
+    render();
+  }
+
+  // Flash the destination control briefly so the user sees what happened
+  if (flashEl) {
+    flashEl.classList.remove('flash');
+    void flashEl.offsetWidth; // reflow to restart animation
+    flashEl.classList.add('flash');
+    setTimeout(() => flashEl.classList.remove('flash'), 600);
+  }
 });
 
 // ============ BOOT ============
