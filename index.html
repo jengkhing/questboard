@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v20</title>
+<title>Kanban Quest — v36</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -509,6 +509,13 @@
     border-color: var(--accent);
     background: rgba(212, 255, 58, 0.02);
   }
+  .add-input.shortcut-flash {
+    animation: shortcut-flash 0.5s ease-out;
+  }
+  @keyframes shortcut-flash {
+    0%   { box-shadow: 0 0 0 1px var(--accent), 0 0 14px rgba(212, 255, 58, 0.35); }
+    100% { box-shadow: 0 0 0 1px transparent; }
+  }
   .pain-select {
     display: flex;
     flex-direction: column;
@@ -961,6 +968,44 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: 2px;
+    transition: background 0.15s, color 0.15s, transform 0.15s;
+    color: var(--ink-faint);
+    user-select: none;
+  }
+  footer .legend-item:hover {
+    color: var(--ink-dim);
+    background: var(--bg-soft);
+  }
+  footer .legend-item.active {
+    color: var(--bg);
+    transform: scale(1.05);
+  }
+  footer .legend-item.active[data-pain="1"] { background: var(--pain-1); }
+  footer .legend-item.active[data-pain="2"] { background: var(--pain-2); }
+  footer .legend-item.active[data-pain="3"] { background: var(--pain-3); }
+  footer .legend-item.active[data-pain="4"] { background: var(--pain-4); }
+  footer .legend-item.active[data-pain="5"] { background: var(--pain-5); }
+  footer .legend-clear {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: none;
+  }
+  footer .legend-clear.show { display: inline-block; }
+  footer .legend-clear:hover {
+    color: var(--ink);
+    border-color: var(--ink-faint);
   }
   footer .legend-dot {
     width: 8px;
@@ -1493,7 +1538,371 @@
   .task:hover .task-unlink { opacity: 1; }
   .task-unlink:hover { color: var(--accent); }
 
-  /* ============ FOCUS MODE ============ */
+  /* ============ DAY STRIP — fixed to top of viewport ============ */
+  :root { --daystrip-h: 56px; }
+
+  .daystrip-wrap {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line-soft);
+    padding: 0;
+    margin: 0;
+  }
+  /* Hide the strip when focus mode is active */
+  body.focus-active .daystrip-wrap { display: none; }
+
+  .daystrip-eyebrow {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    pointer-events: none;
+    z-index: 4;
+    background: var(--bg);
+    padding: 0 6px;
+  }
+  .daystrip-budget {
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+    pointer-events: none;
+    z-index: 4;
+    background: var(--bg);
+    padding: 0 6px;
+    text-transform: uppercase;
+  }
+  .daystrip-budget em {
+    font-style: normal;
+    font-weight: 500;
+    color: var(--accent);
+    margin-left: 6px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 11px;
+  }
+
+  .daystrip {
+    position: relative;
+    height: var(--daystrip-h);
+    background: var(--bg-soft);
+    user-select: none;
+    cursor: crosshair;
+    overflow: hidden;
+    /* Leave room for eyebrow on left and budget on right */
+    margin: 0 132px 0 84px;
+    border-left: 1px solid var(--line-soft);
+    border-right: 1px solid var(--line-soft);
+  }
+
+  .daystrip-hours {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .daystrip-hour {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-left: 1px solid var(--line-soft);
+  }
+  .daystrip-hour::after {
+    content: attr(data-label);
+    position: absolute;
+    top: 4px;
+    left: 3px;
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+  }
+  .daystrip-hour.major::after { color: var(--ink-dim); }
+  .daystrip-hour.major { border-left-color: var(--line); }
+
+  /* Available line at the bottom */
+  .daystrip-avail {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(212, 255, 58, 0.4);
+  }
+
+  /* Now marker */
+  .daystrip-now {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--accent-warm);
+    box-shadow: 0 0 6px rgba(255, 179, 71, 0.6);
+    pointer-events: none;
+    z-index: 3;
+  }
+  .daystrip-now::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    width: 5px;
+    height: 5px;
+    background: var(--accent-warm);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent-warm);
+  }
+
+  /* Block — represents "away" time */
+  .daystrip-block {
+    position: absolute;
+    top: 12px;
+    bottom: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--ink-faint);
+    border-radius: 2px;
+    cursor: move;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, background 0.15s;
+    overflow: hidden;
+  }
+  .daystrip-block:hover {
+    border-color: var(--ink);
+    background: #22222a;
+  }
+  .daystrip-block.drafting {
+    background: rgba(212, 255, 58, 0.08);
+    border-color: var(--accent);
+    border-style: dashed;
+    cursor: crosshair;
+  }
+  .daystrip-block-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    color: var(--ink-dim);
+    white-space: nowrap;
+    padding: 0 4px;
+    pointer-events: none;
+  }
+  .daystrip-block-del {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 14px;
+    height: 14px;
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .daystrip-block:hover .daystrip-block-del { opacity: 1; }
+  .daystrip-block-del:hover { color: var(--accent-warm); }
+  .daystrip-block-resize {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: ew-resize;
+    background: transparent;
+  }
+  .daystrip-block-resize.left { left: 0; }
+  .daystrip-block-resize.right { right: 0; }
+  .daystrip-block-resize:hover { background: var(--accent); opacity: 0.4; }
+
+  .daystrip-cut {
+    position: absolute;
+    bottom: 0;
+    height: 2px;
+    background: var(--bg-soft);
+    z-index: 1;
+  }
+
+  /* Push the app content down by the strip height so it doesn't slip under */
+  body { padding-top: var(--daystrip-h); }
+
+  @media (max-width: 900px) {
+    :root { --daystrip-h: 44px; }
+    .daystrip { margin: 0 12px; }
+    .daystrip-eyebrow { display: none; } /* tight on mobile, hide eyebrow */
+    .daystrip-budget {
+      right: 10px;
+      font-size: 9px;
+    }
+    .daystrip-budget em { font-size: 10px; }
+    .daystrip-block { top: 10px; bottom: 4px; }
+  }
+
+
+  /* ============ JOURNAL VIEW ============ */
+  .journal {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 16px 0 60px;
+  }
+  .journal-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .journal-eyebrow::before {
+    content: '◇';
+    font-size: 10px;
+    color: var(--accent);
+  }
+  .journal-title {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 36px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+  }
+  .journal-title em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .journal-empty {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--ink-faint);
+    text-align: center;
+    padding: 60px 16px;
+  }
+
+  /* Day separator */
+  .journal-day {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 28px 0 14px;
+  }
+  .journal-day::before,
+  .journal-day::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line-soft);
+  }
+  .journal-day:first-child { margin-top: 0; }
+
+  /* Entry row — two columns: source on left, note + timestamp on right */
+  .journal-entry {
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) 1fr auto;
+    gap: 20px;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--line-soft);
+    align-items: baseline;
+  }
+  .journal-entry:hover {
+    background: rgba(255, 255, 255, 0.015);
+  }
+  .journal-source {
+    font-family: var(--serif);
+    font-size: 13px;
+    color: var(--ink-dim);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .journal-source .quest-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 2px;
+  }
+  .journal-source .quest-tag::before { content: '◆ '; }
+  .journal-source .task-name {
+    font-family: var(--serif);
+    font-size: 13px;
+    color: var(--ink-dim);
+  }
+  .journal-source .quest-name {
+    font-family: var(--serif);
+    font-size: 13px;
+    color: var(--ink);
+    display: block;
+  }
+  .journal-source .objective-name {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 12px;
+    color: var(--ink-dim);
+    display: block;
+    margin-top: 2px;
+  }
+  .journal-source.deleted {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+  .journal-note {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink);
+    word-break: break-word;
+  }
+  .journal-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 900px) {
+    .journal { padding: 8px 0 60px; }
+    .journal-title { font-size: 28px; }
+    .journal-entry {
+      grid-template-columns: 1fr;
+      gap: 6px;
+      padding: 14px 4px;
+    }
+    .journal-time {
+      grid-column: 1;
+      justify-self: start;
+    }
+  }
+
   .focus-overlay {
     position: fixed;
     inset: 0;
@@ -1539,17 +1948,65 @@
     font-size: 9px;
     color: var(--accent);
   }
-  .focus-timer {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--ink-dim);
+
+  /* Timer block — centered, bigger, with progress bar */
+  .focus-timer-block {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 14px;
+    gap: 8px;
+    padding: 8px 48px 0;
+    position: relative;
+    z-index: 2;
   }
-  .focus-timer-elapsed { color: var(--ink); }
-  .focus-timer-next { color: var(--ink-faint); }
+  .focus-timer-elapsed {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 44px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .focus-timer-next {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .focus-timer-bar {
+    width: 100%;
+    max-width: 320px;
+    height: 4px;
+    background: var(--line-soft);
+    position: relative;
+    overflow: hidden;
+    border-radius: 2px;
+    margin-top: 4px;
+  }
+  .focus-timer-bar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: linear-gradient(90deg, var(--accent), var(--accent-warm));
+    transition: width 1s linear;
+    box-shadow: 0 0 8px rgba(212, 255, 58, 0.4);
+  }
+  /* Near-full pulse to telegraph incoming check-in */
+  .focus-timer-bar-fill.near-full {
+    animation: focus-bar-pulse 1.2s ease-in-out infinite;
+  }
+  .focus-timer-bar-fill.full {
+    animation: focus-bar-full 1.6s ease-in-out infinite;
+  }
+  @keyframes focus-bar-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(212, 255, 58, 0.4); }
+    50%      { box-shadow: 0 0 16px rgba(212, 255, 58, 0.8); }
+  }
+  @keyframes focus-bar-full {
+    0%, 100% { box-shadow: 0 0 12px rgba(212, 255, 58, 0.5); opacity: 0.85; }
+    50%      { box-shadow: 0 0 24px rgba(212, 255, 58, 1);   opacity: 1; }
+  }
   .focus-exit {
     font-family: var(--mono);
     font-size: 10px;
@@ -1829,6 +2286,8 @@
 
   @media (max-width: 900px) {
     .focus-topbar { padding: 16px 20px; }
+    .focus-timer-block { padding: 4px 20px 0; }
+    .focus-timer-elapsed { font-size: 32px; }
     .focus-content { padding: 24px 20px 200px; }
     .focus-title { font-size: 40px; }
     .focus-desc { font-size: 16px; }
@@ -1963,10 +2422,19 @@
 </style>
 </head>
 <body>
+<div class="daystrip-wrap" id="daystripWrap" title="Drag empty space to mark time away. Drag a block to move. × to remove.">
+  <span class="daystrip-eyebrow">Today</span>
+  <span class="daystrip-budget" id="daystripBudget">free · <em>—</em></span>
+  <div class="daystrip" id="daystrip">
+    <div class="daystrip-hours" id="daystripHours"></div>
+    <div class="daystrip-avail"></div>
+    <div class="daystrip-now" id="daystripNow" style="display:none"></div>
+  </div>
+</div>
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v20</span>
+      <span class="eyebrow">— Kanban / v36</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <div class="level-block">
@@ -2024,7 +2492,7 @@
       <div class="column-body" data-body="todo"></div>
       <div class="add-task">
         <div class="add-row">
-          <input class="add-input" data-add="todo" placeholder="+ new task or quest…" maxlength="140">
+          <input class="add-input" data-add="todo" placeholder="+ new" maxlength="140">
           <div class="type-select">
             <span class="type-select-label">Type</span>
             <div class="type-toggle" data-type-toggle="todo">
@@ -2045,22 +2513,6 @@
         <span class="column-count" data-count="doing">0</span>
       </div>
       <div class="column-body" data-body="doing"></div>
-      <div class="add-task">
-        <div class="add-row">
-          <input class="add-input" data-add="doing" placeholder="+ in progress…" maxlength="140">
-          <div class="type-select">
-            <span class="type-select-label">Type</span>
-            <div class="type-toggle" data-type-toggle="doing">
-              <button class="type-toggle-btn active" data-type="task">task</button>
-              <button class="type-toggle-btn" data-type="quest">quest</button>
-            </div>
-          </div>
-          <div class="pain-select" data-pain-select="doing">
-            <span class="pain-select-label">Pain</span>
-            <div class="pain-select-pips"></div>
-          </div>
-        </div>
-      </div>
     </div>
     <div class="column" data-col="done">
       <div class="column-header">
@@ -2078,7 +2530,7 @@
     </div>
     <div class="add-task backlog-add">
       <div class="add-row">
-        <input class="add-input" data-add="backlog" placeholder="+ park a task or quest for later…" maxlength="140">
+        <input class="add-input" data-add="backlog" placeholder="+ new" maxlength="140">
         <div class="type-select">
           <span class="type-select-label">Type</span>
           <div class="type-toggle" data-type-toggle="backlog">
@@ -2151,15 +2603,6 @@
             <span class="column-count" data-quest-count="doing">0</span>
           </div>
           <div class="column-body" data-quest-body="doing"></div>
-          <div class="add-task">
-            <div class="add-row">
-              <input class="add-input" data-add="quest-doing" placeholder="+ in progress…" maxlength="140">
-              <div class="pain-select" data-pain-select="quest-doing">
-                <span class="pain-select-label">Pain</span>
-                <div class="pain-select-pips"></div>
-              </div>
-            </div>
-          </div>
         </div>
         <div class="column" data-quest-col="done">
           <div class="column-header">
@@ -2172,14 +2615,29 @@
     </div>
   </div>
 
+  <!-- Journal view — shown when J is pressed -->
+  <div data-view-target="journal" style="display:none">
+    <div class="breadcrumb">
+      <button class="breadcrumb-back" id="journalBack">← Quest board</button>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Journal</span>
+    </div>
+    <div class="journal">
+      <div class="journal-eyebrow">Journal</div>
+      <h1 class="journal-title">What you've <em>done.</em></h1>
+      <div id="journalBody"></div>
+    </div>
+  </div>
+
   <footer>
     <div class="legend">
       <span>Pain ·</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--pain-1)"></span>1 trivial</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--pain-2)"></span>2 light</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--pain-3)"></span>3 medium</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--pain-4)"></span>4 heavy</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--pain-5)"></span>5 brutal</span>
+      <span class="legend-item" data-pain="1"><span class="legend-dot" style="background:var(--pain-1)"></span>1 trivial</span>
+      <span class="legend-item" data-pain="2"><span class="legend-dot" style="background:var(--pain-2)"></span>2 light</span>
+      <span class="legend-item" data-pain="3"><span class="legend-dot" style="background:var(--pain-3)"></span>3 medium</span>
+      <span class="legend-item" data-pain="4"><span class="legend-dot" style="background:var(--pain-4)"></span>4 heavy</span>
+      <span class="legend-item" data-pain="5"><span class="legend-dot" style="background:var(--pain-5)"></span>5 brutal</span>
+      <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <button id="resetBtn">Reset everything</button>
   </footer>
@@ -2407,11 +2865,14 @@
 <div class="focus-overlay" id="focusOverlay">
   <div class="focus-topbar">
     <span class="focus-eyebrow">Focus mode</span>
-    <span class="focus-timer">
-      <span class="focus-timer-elapsed" id="focusTimerElapsed">0:00</span>
-      <span class="focus-timer-next" id="focusTimerNext">next check-in in 15:00</span>
-    </span>
     <button class="focus-exit" id="focusExit">Exit · esc</button>
+  </div>
+  <div class="focus-timer-block">
+    <div class="focus-timer-elapsed" id="focusTimerElapsed">0:00</div>
+    <div class="focus-timer-next" id="focusTimerNext">next check-in in 15:00</div>
+    <div class="focus-timer-bar">
+      <div class="focus-timer-bar-fill" id="focusTimerBarFill" style="width:0%"></div>
+    </div>
   </div>
   <div class="focus-content">
     <h1 class="focus-title" id="focusTitle"></h1>
@@ -2542,7 +3003,7 @@
 
 <!-- Snippet prompt popover -->
 <div class="focus-snippet" id="focusSnippet">
-  <div class="focus-snippet-prompt" id="focusSnippetPrompt">How did the last 15 minutes go?</div>
+  <div class="focus-snippet-prompt" id="focusSnippetPrompt">What did you do?</div>
   <input class="focus-snippet-input" id="focusSnippetInput" placeholder="quick note…" maxlength="200">
   <div class="focus-snippet-hint">Enter to save · Esc to skip</div>
 </div>
@@ -2563,12 +3024,20 @@ let state = {
   level: 1,
   totalDone: 0,
 };
-let pendingPain = { todo: 3, doing: 3, backlog: 3, 'quest-todo': 3, 'quest-doing': 3 };
-let pendingType = { todo: 'task', doing: 'task', backlog: 'task' };
+let pendingPain = { todo: 3, backlog: 3, 'quest-todo': 3 };
+let pendingType = { todo: 'task', backlog: 'task' };
 // UI-only: which tasks have their description in edit mode (not persisted)
 let editingDesc = new Set();
-// UI-only: current view ('active' | 'backlog' | 'quest')
+// UI-only: current view ('active' | 'backlog' | 'quest' | 'journal')
 let currentView = 'active';
+// UI-only: remembers which view to return to when journal closes
+let previousView = 'active';
+// UI-only: active pain filter (1-5, or null for no filter). Session-scoped, not persisted.
+let activePainFilter = null;
+// Day strip — "away" blocks for today. Each block: { start, end } in minutes since 00:00.
+// Persisted alongside state, keyed by dayKey (4am-anchored YYYY-MM-DD).
+let dayStripBlocks = [];
+let dayStripKey = null;
 // UI-only: when currentView === 'quest', which quest is open
 let currentQuestId = null;
 // UI-only: id of the currently-dragging task (for dragover targets to inspect)
@@ -2580,17 +3049,41 @@ function xpForPain(p, type) {
   const mult = type === 'quest' ? 3 : 1;
   return p * 20 * mult;
 }
+// Pain filter helper — returns true if the task should be visible given the active filter
+function passesPainFilter(task) {
+  if (!activePainFilter) return true;
+  return task.pain === activePainFilter;
+}
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function nowMs() { return Date.now(); }
 const DAY = 24 * 60 * 60 * 1000;
 
 // ============ STORAGE (localStorage — works anywhere) ============
+// Compute the "day key" for now — 4am-anchored so working past midnight is the same day
+function currentDayKey() {
+  const now = new Date();
+  // If we're between midnight and 4am, treat as the previous day
+  const d = new Date(now);
+  if (now.getHours() < 4) d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 async function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       state = { ...state, ...parsed };
+      // Day strip — load if today's key matches, otherwise drop
+      if (parsed.dayStripKey === currentDayKey() && Array.isArray(parsed.dayStripBlocks)) {
+        dayStripBlocks = parsed.dayStripBlocks;
+        dayStripKey = parsed.dayStripKey;
+      } else {
+        dayStripBlocks = [];
+        dayStripKey = currentDayKey();
+      }
+    } else {
+      dayStripKey = currentDayKey();
     }
   } catch (e) { /* fresh start */ }
   // Migration (v16): grandfather existing Done tasks as already-awarded so re-shuffling
@@ -2602,8 +3095,10 @@ async function load() {
   });
 }
 async function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch (e) { /* quota exceeded or disabled — ignore */ }
+  try {
+    const payload = { ...state, dayStripBlocks, dayStripKey };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (e) { /* quota exceeded or disabled — ignore */ }
 }
 
 // ============ VELOCITY ============
@@ -2674,7 +3169,7 @@ function render() {
   // Columns — main board only shows TOP-LEVEL items (no questId, not backlog)
   ['todo','doing','done'].forEach(col => {
     const body = document.querySelector(`[data-body="${col}"]`);
-    const list = state.tasks.filter(t => t.col === col && !t.backlog && !t.questId);
+    const list = state.tasks.filter(t => t.col === col && !t.backlog && !t.questId && passesPainFilter(t));
     document.querySelector(`[data-count="${col}"]`).textContent = list.length;
     body.innerHTML = '';
     if (list.length === 0 && col === 'done') {
@@ -2688,7 +3183,7 @@ function render() {
 
   // Backlog
   const backlogBody = document.getElementById('backlogBody');
-  const backlogList = state.tasks.filter(t => t.backlog);
+  const backlogList = state.tasks.filter(t => t.backlog && passesPainFilter(t));
   backlogBody.innerHTML = '';
   if (backlogList.length === 0) {
     const e = document.createElement('div');
@@ -2699,19 +3194,24 @@ function render() {
     backlogList.forEach(t => backlogBody.appendChild(renderTask(t)));
   }
 
-  // View counts (active = top-level, non-backlog items)
+  // View counts (active = top-level, non-backlog items; ignore filter so users see real totals)
   const activeTotal = state.tasks.filter(t => !t.backlog && !t.questId).length;
+  const backlogTotal = state.tasks.filter(t => t.backlog).length;
   document.getElementById('activeCount').textContent = activeTotal;
-  document.getElementById('backlogCount').textContent = backlogList.length;
+  document.getElementById('backlogCount').textContent = backlogTotal;
 
   // Quest view — render if active
   if (currentView === 'quest' && currentQuestId) {
     renderQuestView();
   }
+  // Journal view — render if active
+  if (currentView === 'journal') {
+    renderJournal();
+  }
 
-  // Hide view-toggle while inside a Quest
+  // Hide view-toggle while inside a Quest or Journal
   const viewToggle = document.getElementById('viewToggle');
-  if (viewToggle) viewToggle.style.display = currentView === 'quest' ? 'none' : 'inline-flex';
+  if (viewToggle) viewToggle.style.display = (currentView === 'quest' || currentView === 'journal') ? 'none' : 'inline-flex';
 
   // Toggle body class for ambient Quest background
   document.body.classList.toggle('in-quest', currentView === 'quest');
@@ -2724,7 +3224,17 @@ function render() {
     btn.classList.toggle('active', btn.dataset.view === currentView);
   });
 
+  // Pain filter UI sync
+  document.querySelectorAll('.legend-item[data-pain]').forEach(item => {
+    item.classList.toggle('active', activePainFilter !== null && Number(item.dataset.pain) === activePainFilter);
+  });
+  const legendClear = document.getElementById('legendClear');
+  if (legendClear) legendClear.classList.toggle('show', activePainFilter !== null);
+
   renderPainSelects();
+
+  // Day strip — only meaningful when active view is visible
+  if (typeof renderDayStrip === 'function') renderDayStrip();
 }
 
 function applyDelta(id, d) {
@@ -2874,8 +3384,8 @@ function renderTask(t) {
       render();
     });
     desc.addEventListener('keydown', (e) => {
-      // Cmd/Ctrl+Enter to save and close
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      // Enter (plain or Cmd/Ctrl) saves and closes; Shift+Enter keeps multi-line
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         desc.blur();
       } else if (e.key === 'Escape') {
@@ -3044,7 +3554,7 @@ function renderTask(t) {
 }
 
 function renderPainSelects() {
-  ['todo','doing','backlog','quest-todo','quest-doing'].forEach(col => {
+  ['todo','backlog','quest-todo'].forEach(col => {
     const wrap = document.querySelector(`[data-pain-select="${col}"] .pain-select-pips`);
     if (!wrap) return;
     wrap.innerHTML = '';
@@ -3069,9 +3579,8 @@ document.querySelectorAll('.add-input').forEach(input => {
       if (!text) return;
       const source = input.dataset.add;
       const isBacklog = source === 'backlog';
-      const isQuestInput = source === 'quest-todo' || source === 'quest-doing';
-      const col = isBacklog ? 'todo' : (isQuestInput ? source.replace('quest-','') : source);
-      const isQuestType = isQuestInput ? false : (pendingType[source] === 'quest');
+      const isQuestInput = source === 'quest-todo';
+      const col = isBacklog ? 'todo' : (isQuestInput ? 'todo' : source);
       const newTask = {
         id: uid(),
         text,
@@ -3085,11 +3594,8 @@ document.querySelectorAll('.add-input').forEach(input => {
       };
       state.tasks.push(newTask);
       input.value = '';
+      input.blur();
       save(); render();
-      // Auto-enter focus if a fresh non-Quest task was added straight to Doing
-      if (col === 'doing' && !isQuestType && !isBacklog) {
-        enterFocus(newTask.id);
-      }
     }
   });
 });
@@ -3114,6 +3620,23 @@ document.querySelectorAll('.view-toggle-btn').forEach(btn => {
     render();
   });
 });
+
+// Pain filter — clicking a legend item toggles its filter on/off (single-select)
+document.querySelectorAll('.legend-item[data-pain]').forEach(item => {
+  item.addEventListener('click', () => {
+    const lvl = Number(item.dataset.pain);
+    activePainFilter = (activePainFilter === lvl) ? null : lvl;
+    render();
+  });
+});
+
+// Clear button — the legend "× clear filter"
+function clearPainFilter() {
+  activePainFilter = null;
+  render();
+}
+const legendClearBtn = document.getElementById('legendClear');
+if (legendClearBtn) legendClearBtn.addEventListener('click', clearPainFilter);
 
 // ============ DRAG & DROP ============
 document.querySelectorAll('.column').forEach(col => {
@@ -3267,10 +3790,37 @@ function showLevelToast(lvl) {
 
 // ============ RESET ============
 document.getElementById('resetBtn').addEventListener('click', async () => {
-  if (!confirm('Wipe all tasks and progress?')) return;
+  console.log('[reset] button clicked');
+  if (!confirm('Wipe all tasks and progress? This cannot be undone.')) {
+    console.log('[reset] cancelled');
+    return;
+  }
+  console.log('[reset] confirmed, wiping state');
+  // Reset every field — match the initial state shape exactly
   state = { tasks: [], xp: 0, level: 1, totalDone: 0 };
+  // Reset UI state too
+  editingDesc = new Set();
+  currentView = 'active';
+  previousView = 'active';
+  currentQuestId = null;
+  currentDraggedTaskId = null;
+  // Reset day strip
+  dayStripBlocks = [];
+  dayStripKey = currentDayKey();
+  // Exit focus mode if active
+  if (focusTaskId) {
+    try { exitFocus(); } catch (e) { console.warn('[reset] exitFocus error:', e); }
+  }
+  // Explicitly nuke localStorage as belt-and-suspenders
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    console.log('[reset] localStorage cleared');
+  } catch (e) {
+    console.warn('[reset] localStorage clear failed:', e);
+  }
   await save();
   render();
+  console.log('[reset] done');
 });
 
 // ============ CAT COMPANION ============
@@ -3409,7 +3959,7 @@ function renderQuestView() {
   // Populate Quest columns
   ['todo','doing','done'].forEach(col => {
     const body = document.querySelector(`[data-quest-body="${col}"]`);
-    const list = children.filter(t => t.col === col);
+    const list = children.filter(t => t.col === col && passesPainFilter(t));
     document.querySelector(`[data-quest-count="${col}"]`).textContent = list.length;
     body.innerHTML = '';
     if (list.length === 0 && col === 'done') {
@@ -3454,7 +4004,7 @@ function renderQuestHeroDesc(quest) {
     };
     textarea.addEventListener('blur', commit);
     textarea.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         textarea.blur();
       } else if (e.key === 'Escape') {
@@ -3615,19 +4165,24 @@ const FOCUS_CHECKPOINT_MS = 15 * 60 * 1000; // 15 minutes
 function enterFocus(taskId) {
   const t = state.tasks.find(x => x.id === taskId);
   if (!t) return;
+  const overlay = document.getElementById('focusOverlay');
+  const catWrap = document.getElementById('focusCat');
+  const catFrame = document.getElementById('focusCatFrame');
+  if (!overlay || !catWrap || !catFrame) return;
   focusTaskId = taskId;
   focusStartTs = nowMs();
   focusLastCheckpoint = focusStartTs;
   renderFocus();
-  document.getElementById('focusOverlay').classList.add('show');
-  document.getElementById('focusCat').style.display = 'flex';
-  document.getElementById('focusCat').classList.remove('pat-ready');
-  document.getElementById('focusCatFrame').classList.remove('pat-ready');
+  overlay.classList.add('show');
+  catWrap.style.display = 'flex';
+  catWrap.classList.remove('pat-ready');
+  catFrame.classList.remove('pat-ready');
   // Hide cat from main app since the focus cat takes over
   const mainCat = document.getElementById('catCompanion');
   if (mainCat) mainCat.style.display = 'none';
   // Lock body scroll
   document.body.style.overflow = 'hidden';
+  document.body.classList.add('focus-active');
   // Start the timer
   startFocusTimer();
 }
@@ -3648,6 +4203,7 @@ function exitFocus() {
   if (mainCat) mainCat.style.display = '';
   // Unlock body scroll
   document.body.style.overflow = '';
+  document.body.classList.remove('focus-active');
   // Re-render to surface any new log entries on the task description
   render();
 }
@@ -3696,12 +4252,23 @@ function startFocusTimer() {
   const tick = () => {
     if (!focusTaskId) return;
     const elapsed = nowMs() - focusStartTs;
-    document.getElementById('focusTimerElapsed').textContent = formatFocusTime(elapsed);
+    document.getElementById('focusTimerElapsed').textContent = formatFocusElapsed(elapsed);
     const sinceCheckpoint = nowMs() - focusLastCheckpoint;
     const untilNext = FOCUS_CHECKPOINT_MS - sinceCheckpoint;
     const nextEl = document.getElementById('focusTimerNext');
+    const barFill = document.getElementById('focusTimerBarFill');
     const catFrame = document.getElementById('focusCatFrame');
     const catWrap = document.getElementById('focusCat');
+
+    // Progress bar: 0 → 100% over the checkpoint duration
+    const pct = Math.max(0, Math.min(100, (sinceCheckpoint / FOCUS_CHECKPOINT_MS) * 100));
+    if (barFill) {
+      barFill.style.width = pct + '%';
+      // Glow stages: subtle pulse at >90%, stronger pulse when full
+      barFill.classList.toggle('near-full', pct >= 90 && pct < 100);
+      barFill.classList.toggle('full', pct >= 100);
+    }
+
     if (untilNext <= 0) {
       nextEl.textContent = 'check-in ready';
       if (!catFrame.classList.contains('pat-ready')) {
@@ -3716,6 +4283,18 @@ function startFocusTimer() {
   };
   tick();
   focusTimerInterval = setInterval(tick, 1000);
+}
+
+// Big elapsed-time display: M:SS under an hour, H:MM:SS after
+function formatFocusElapsed(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  if (hrs > 0) {
+    return `${hrs}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  }
+  return `${mins}:${String(secs).padStart(2,'0')}`;
 }
 
 // Cat click — open snippet prompt if pat-ready
@@ -3741,14 +4320,6 @@ snippetInput.addEventListener('keydown', (e) => {
       if (v) {
         t.focusLog.push({ time: nowMs(), note: v });
       }
-      // Also fold the note into the task description for visibility outside focus mode
-      if (v) {
-        const stamp = `[+${formatFocusTime(nowMs() - focusStartTs)}]`;
-        const existing = (t.description || '').trim();
-        t.description = existing
-          ? `${existing}\n${stamp} ${v}`
-          : `${stamp} ${v}`;
-      }
       save();
     }
     // Reset checkpoint regardless of whether they wrote anything
@@ -3756,6 +4327,7 @@ snippetInput.addEventListener('keydown', (e) => {
     document.getElementById('focusCatFrame').classList.remove('pat-ready');
     document.getElementById('focusCat').classList.remove('pat-ready');
     document.getElementById('focusSnippet').classList.remove('show');
+    snippetInput.blur();
     renderFocus();
   } else if (e.key === 'Escape') {
     e.preventDefault();
@@ -3764,6 +4336,7 @@ snippetInput.addEventListener('keydown', (e) => {
     document.getElementById('focusCatFrame').classList.remove('pat-ready');
     document.getElementById('focusCat').classList.remove('pat-ready');
     document.getElementById('focusSnippet').classList.remove('show');
+    snippetInput.blur();
   }
 });
 
@@ -3774,6 +4347,11 @@ document.addEventListener('keydown', (e) => {
     // Don't exit if snippet is open — let the snippet's own Esc handler run first
     if (document.getElementById('focusSnippet').classList.contains('show')) return;
     exitFocus();
+    return;
+  }
+  // Escape also closes the Journal (returns to where you came from)
+  if (e.key === 'Escape' && currentView === 'journal' && !isEditableFocused()) {
+    exitJournal();
   }
 });
 
@@ -3788,6 +4366,242 @@ document.getElementById('focusMarkDone').addEventListener('click', (e) => {
   handleCompletion(t, rect.left + rect.width / 2, rect.top + rect.height / 2);
   // Exit a moment later so the user sees a flash of the celebration before returning
   setTimeout(() => exitFocus(), 600);
+});
+
+// ============ JOURNAL ============
+function openJournal() {
+  // Remember where we came from so toggling out returns to that view
+  if (currentView !== 'journal') previousView = currentView;
+  currentView = 'journal';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  render();
+}
+
+function exitJournal() {
+  // Return to where we came from — Active or Backlog, never Quest
+  currentView = (previousView === 'backlog') ? 'backlog' : 'active';
+  render();
+}
+
+// Build a stable day label from a timestamp.
+// Today / Yesterday / weekday name (this week) / formal date.
+function journalDayLabel(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const diff = Math.round((startOfDay(now) - startOfDay(d)) / dayMs);
+  if (diff === 0) return 'today';
+  if (diff === 1) return 'yesterday';
+  if (diff > 1 && diff < 7) return d.toLocaleDateString(undefined, { weekday: 'long' }).toLowerCase();
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+}
+
+function journalTimeLabel(ts) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: false });
+}
+
+function renderJournal() {
+  const body = document.getElementById('journalBody');
+  if (!body) return;
+  body.innerHTML = '';
+
+  // Flatten every focusLog entry across all tasks with a back-reference to the source.
+  const allEntries = [];
+  state.tasks.forEach(t => {
+    if (!t.focusLog || t.focusLog.length === 0) return;
+    if (!passesPainFilter(t)) return; // respect pain filter
+    t.focusLog.forEach(entry => {
+      allEntries.push({
+        time: entry.time,
+        note: entry.note,
+        task: t,
+      });
+    });
+  });
+
+  if (allEntries.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'journal-empty';
+    empty.textContent = 'No journal entries yet — focus mode check-ins will appear here.';
+    body.appendChild(empty);
+    return;
+  }
+
+  // Sort newest first
+  allEntries.sort((a, b) => b.time - a.time);
+
+  let currentDay = null;
+  allEntries.forEach(entry => {
+    const dayLabel = journalDayLabel(entry.time);
+    if (dayLabel !== currentDay) {
+      currentDay = dayLabel;
+      const sep = document.createElement('div');
+      sep.className = 'journal-day';
+      sep.textContent = dayLabel;
+      body.appendChild(sep);
+    }
+
+    const row = document.createElement('div');
+    row.className = 'journal-entry';
+
+    // Source column — task or quest reference
+    const source = document.createElement('div');
+    source.className = 'journal-source';
+    const t = entry.task;
+    if (t.type === 'quest') {
+      // A Quest-level entry (rare — Quests don't typically have focusLog since they don't focus)
+      const tag = document.createElement('span');
+      tag.className = 'quest-tag';
+      tag.textContent = 'Quest';
+      const name = document.createElement('span');
+      name.className = 'quest-name';
+      name.textContent = t.text;
+      source.appendChild(tag);
+      source.appendChild(name);
+    } else if (t.questId) {
+      // Linked task — show parent Quest + the objective
+      const parent = state.tasks.find(x => x.id === t.questId);
+      const tag = document.createElement('span');
+      tag.className = 'quest-tag';
+      tag.textContent = parent ? `Quest: ${parent.text}` : 'Quest';
+      const name = document.createElement('span');
+      name.className = 'objective-name';
+      name.textContent = t.text;
+      source.appendChild(tag);
+      source.appendChild(name);
+    } else {
+      // Plain task
+      const name = document.createElement('span');
+      name.className = 'task-name';
+      name.textContent = t.text;
+      source.appendChild(name);
+    }
+
+    // Note
+    const note = document.createElement('div');
+    note.className = 'journal-note';
+    note.textContent = entry.note;
+
+    // Timestamp
+    const time = document.createElement('div');
+    time.className = 'journal-time';
+    time.textContent = journalTimeLabel(entry.time);
+
+    row.appendChild(source);
+    row.appendChild(note);
+    row.appendChild(time);
+    body.appendChild(row);
+  });
+}
+
+// Journal back button
+document.getElementById('journalBack').addEventListener('click', exitJournal);
+
+
+// Tab — toggle between Active and Backlog (only when no input is focused)
+// T   — focus the new-task input in the current view (Active Todo or Backlog)
+// Q   — focus the new-quest input (Active Todo only; Q is a no-op in Backlog/Quest view)
+function isEditableFocused() {
+  const a = document.activeElement;
+  if (!a) return false;
+  const tag = a.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (a.isContentEditable) return true;
+  return false;
+}
+
+function flashInput(input) {
+  if (!input) return;
+  input.classList.remove('shortcut-flash');
+  void input.offsetWidth; // restart animation
+  input.classList.add('shortcut-flash');
+  setTimeout(() => input.classList.remove('shortcut-flash'), 600);
+}
+
+// Focus the right add-input and pre-set its type based on the current view
+function focusAddInput(typeWanted /* 'task' | 'quest' */) {
+  let input = null;
+  let source = null;
+  if (currentView === 'active') {
+    input = document.querySelector('.add-input[data-add="todo"]');
+    source = 'todo';
+  } else if (currentView === 'backlog') {
+    input = document.querySelector('.add-input[data-add="backlog"]');
+    source = 'backlog';
+  } else if (currentView === 'quest') {
+    // Quest view: only Task can be created (Q is blocked elsewhere)
+    input = document.querySelector('.add-input[data-add="quest-todo"]');
+    source = 'quest-todo';
+  }
+  if (!input || !source) return;
+
+  // Pre-set the type if a toggle exists for this source
+  if (typeWanted && pendingType[source] !== undefined) {
+    pendingType[source] = typeWanted;
+    const toggle = document.querySelector(`.type-toggle[data-type-toggle="${source}"]`);
+    if (toggle) {
+      toggle.querySelectorAll('.type-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.type === typeWanted);
+      });
+    }
+  }
+
+  input.focus();
+  flashInput(input);
+}
+
+document.addEventListener('keydown', (e) => {
+  // Never hijack shortcuts during text entry, focus mode, or modifier-key combos
+  if (isEditableFocused()) return;
+  if (focusTaskId) return; // in focus mode, hands off
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+  if (e.key === 'Tab') {
+    // Only toggle on the main app views; skip if inside a Quest or Journal
+    if (currentView === 'quest' || currentView === 'journal') return;
+    e.preventDefault();
+    currentView = (currentView === 'active') ? 'backlog' : 'active';
+    render();
+    // Briefly flash the destination toggle button as confirmation
+    const btn = document.querySelector(`.view-toggle-btn[data-view="${currentView}"]`);
+    if (btn) {
+      btn.classList.remove('flash');
+      void btn.offsetWidth;
+      btn.classList.add('flash');
+      setTimeout(() => btn.classList.remove('flash'), 600);
+    }
+    return;
+  }
+
+  // R — toggle Journal (Records). Opens from any non-journal view.
+  // From Journal, returns to the view you came from (Active or Backlog).
+  if (e.key === 'r' || e.key === 'R') {
+    e.preventDefault();
+    if (currentView === 'journal') {
+      exitJournal();
+    } else {
+      openJournal();
+    }
+    return;
+  }
+
+  // T — new task
+  if (e.key === 't' || e.key === 'T') {
+    if (currentView === 'journal') return; // can't add from journal
+    e.preventDefault();
+    focusAddInput('task');
+    return;
+  }
+
+  // Q — new quest (blocked in Quest view since no nested Quests)
+  if (e.key === 'q' || e.key === 'Q') {
+    if (currentView === 'quest' || currentView === 'journal') return; // silent no-op
+    e.preventDefault();
+    focusAddInput('quest');
+    return;
+  }
 });
 
 // ============ RIGHT-CLICK BACK NAVIGATION ============
@@ -3825,6 +4639,9 @@ document.addEventListener('contextmenu', (e) => {
     flashEl = document.querySelector('.view-toggle-btn[data-view="active"]');
     currentView = 'active';
     render();
+  } else if (currentView === 'journal') {
+    flashEl = document.getElementById('journalBack');
+    exitJournal();
   }
 
   // Flash the destination control briefly so the user sees what happened
@@ -3835,6 +4652,266 @@ document.addEventListener('contextmenu', (e) => {
     setTimeout(() => flashEl.classList.remove('flash'), 600);
   }
 });
+
+// ============ DAY STRIP ============
+// Blocks are stored as { start, end } in minutes from 00:00 (range 0-1440).
+// We snap to 15-min increments.
+const SNAP_MINUTES = 15;
+const MIN_BLOCK_MIN = 15;
+const DAY_MINUTES = 1440;
+
+function formatHM(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+function snap(min) {
+  return Math.round(min / SNAP_MINUTES) * SNAP_MINUTES;
+}
+
+function clampVal(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+function pxToMin(stripEl, clientX) {
+  const r = stripEl.getBoundingClientRect();
+  const rel = clampVal(clientX - r.left, 0, r.width);
+  const min = (rel / r.width) * DAY_MINUTES;
+  return clampVal(snap(min), 0, DAY_MINUTES);
+}
+
+function totalAwayMinutes() {
+  return dayStripBlocks.reduce((sum, b) => sum + (b.end - b.start), 0);
+}
+
+function workingBudgetText() {
+  const away = totalAwayMinutes();
+  const free = DAY_MINUTES - away;
+  const h = Math.floor(free / 60);
+  const m = free % 60;
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}min`;
+}
+
+function blockOverlaps(start, end, excludeIdx = -1) {
+  for (let i = 0; i < dayStripBlocks.length; i++) {
+    if (i === excludeIdx) continue;
+    const b = dayStripBlocks[i];
+    if (start < b.end && end > b.start) return true;
+  }
+  return false;
+}
+
+function renderDayStrip() {
+  // Roll over to a new day if needed
+  const todayKey = currentDayKey();
+  if (dayStripKey !== todayKey) {
+    dayStripBlocks = [];
+    dayStripKey = todayKey;
+    save();
+  }
+
+  const strip = document.getElementById('daystrip');
+  if (!strip) return;
+
+  // Hour ticks
+  const hoursEl = document.getElementById('daystripHours');
+  hoursEl.innerHTML = '';
+  for (let h = 0; h <= 24; h++) {
+    const tick = document.createElement('div');
+    tick.className = 'daystrip-hour' + ((h % 6 === 0) ? ' major' : '');
+    tick.style.left = ((h / 24) * 100) + '%';
+    tick.dataset.label = (h % 3 === 0 && h < 24) ? String(h).padStart(2,'0') : '';
+    hoursEl.appendChild(tick);
+  }
+
+  // Clear existing blocks/cuts
+  strip.querySelectorAll('.daystrip-block, .daystrip-cut').forEach(el => el.remove());
+
+  dayStripBlocks.forEach((block, idx) => {
+    const startPct = (block.start / DAY_MINUTES) * 100;
+    const widthPct = ((block.end - block.start) / DAY_MINUTES) * 100;
+
+    const el = document.createElement('div');
+    el.className = 'daystrip-block';
+    el.style.left = startPct + '%';
+    el.style.width = widthPct + '%';
+    el.dataset.idx = idx;
+
+    const label = document.createElement('span');
+    label.className = 'daystrip-block-label';
+    label.textContent = `${formatHM(block.start)}–${formatHM(block.end)}`;
+    el.appendChild(label);
+
+    const del = document.createElement('button');
+    del.className = 'daystrip-block-del';
+    del.textContent = '×';
+    del.title = 'Remove block';
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      dayStripBlocks.splice(idx, 1);
+      save();
+      renderDayStrip();
+    });
+    // Also stop mousedown propagation so the strip's create-drag doesn't kick in
+    del.addEventListener('mousedown', (e) => e.stopPropagation());
+    el.appendChild(del);
+
+    const leftHandle = document.createElement('div');
+    leftHandle.className = 'daystrip-block-resize left';
+    leftHandle.dataset.handle = 'left';
+    el.appendChild(leftHandle);
+    const rightHandle = document.createElement('div');
+    rightHandle.className = 'daystrip-block-resize right';
+    rightHandle.dataset.handle = 'right';
+    el.appendChild(rightHandle);
+
+    strip.appendChild(el);
+
+    const cut = document.createElement('div');
+    cut.className = 'daystrip-cut';
+    cut.style.left = startPct + '%';
+    cut.style.width = widthPct + '%';
+    strip.appendChild(cut);
+  });
+
+  // Now marker
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowEl = document.getElementById('daystripNow');
+  if (nowEl) {
+    nowEl.style.display = 'block';
+    nowEl.style.left = ((nowMin / DAY_MINUTES) * 100) + '%';
+  }
+
+  document.getElementById('daystripBudget').innerHTML = `free · <em>${workingBudgetText()}</em>`;
+}
+
+// Tick the now marker every minute
+setInterval(() => {
+  const nowEl = document.getElementById('daystripNow');
+  if (nowEl && nowEl.style.display !== 'none') {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    nowEl.style.left = ((nowMin / DAY_MINUTES) * 100) + '%';
+  }
+  // Also check if day rolled over
+  if (dayStripKey !== currentDayKey()) renderDayStrip();
+}, 60 * 1000);
+
+// ---- Interactions ----
+(function setupDayStripInteractions() {
+  const strip = document.getElementById('daystrip');
+  if (!strip) return;
+
+  let dragState = null;
+
+  strip.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    const blockEl = e.target.closest('.daystrip-block');
+    const handleEl = e.target.closest('.daystrip-block-resize');
+    const delEl = e.target.closest('.daystrip-block-del');
+    if (delEl) return;
+
+    if (handleEl && blockEl) {
+      dragState = { mode: 'resize', idx: Number(blockEl.dataset.idx), handle: handleEl.dataset.handle };
+      e.preventDefault();
+      return;
+    }
+    if (blockEl) {
+      const idx = Number(blockEl.dataset.idx);
+      const block = dayStripBlocks[idx];
+      dragState = {
+        mode: 'move',
+        idx,
+        anchorMin: pxToMin(strip, e.clientX),
+        originalStart: block.start,
+        originalEnd: block.end,
+      };
+      e.preventDefault();
+      return;
+    }
+
+    const startMin = pxToMin(strip, e.clientX);
+    const draftEl = document.createElement('div');
+    draftEl.className = 'daystrip-block drafting';
+    draftEl.style.left = ((startMin / DAY_MINUTES) * 100) + '%';
+    draftEl.style.width = '0%';
+    strip.appendChild(draftEl);
+    dragState = { mode: 'create', startMin, draftEl };
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragState) return;
+    const curMin = pxToMin(strip, e.clientX);
+
+    if (dragState.mode === 'create') {
+      const s = Math.min(dragState.startMin, curMin);
+      const en = Math.max(dragState.startMin, curMin);
+      const el = dragState.draftEl;
+      el.style.left = ((s / DAY_MINUTES) * 100) + '%';
+      el.style.width = (((en - s) / DAY_MINUTES) * 100) + '%';
+      el.querySelector('.daystrip-block-label')?.remove();
+      const lbl = document.createElement('span');
+      lbl.className = 'daystrip-block-label';
+      lbl.textContent = `${formatHM(s)}–${formatHM(en)}`;
+      el.appendChild(lbl);
+    } else if (dragState.mode === 'move') {
+      const delta = curMin - dragState.anchorMin;
+      const block = dayStripBlocks[dragState.idx];
+      const duration = dragState.originalEnd - dragState.originalStart;
+      let newStart = dragState.originalStart + delta;
+      newStart = clampVal(snap(newStart), 0, DAY_MINUTES - duration);
+      const newEnd = newStart + duration;
+      if (!blockOverlaps(newStart, newEnd, dragState.idx)) {
+        block.start = newStart;
+        block.end = newEnd;
+        renderDayStrip();
+      }
+    } else if (dragState.mode === 'resize') {
+      const block = dayStripBlocks[dragState.idx];
+      if (dragState.handle === 'left') {
+        const newStart = clampVal(snap(curMin), 0, block.end - MIN_BLOCK_MIN);
+        if (!blockOverlaps(newStart, block.end, dragState.idx)) {
+          block.start = newStart;
+          renderDayStrip();
+        }
+      } else {
+        const newEnd = clampVal(snap(curMin), block.start + MIN_BLOCK_MIN, DAY_MINUTES);
+        if (!blockOverlaps(block.start, newEnd, dragState.idx)) {
+          block.end = newEnd;
+          renderDayStrip();
+        }
+      }
+    }
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    if (!dragState) return;
+    if (dragState.mode === 'create') {
+      const curMin = pxToMin(strip, e.clientX);
+      let s = Math.min(dragState.startMin, curMin);
+      let en = Math.max(dragState.startMin, curMin);
+      s = snap(s);
+      en = snap(en);
+      if (en - s < MIN_BLOCK_MIN) en = s + MIN_BLOCK_MIN;
+      en = clampVal(en, 0, DAY_MINUTES);
+      if (!blockOverlaps(s, en)) {
+        dayStripBlocks.push({ start: s, end: en });
+      }
+      dragState.draftEl.remove();
+      save();
+      renderDayStrip();
+    } else {
+      save();
+    }
+    dragState = null;
+  });
+})();
 
 // ============ BOOT ============
 (async () => {
