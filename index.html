@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v60</title>
+<title>Kanban Quest — v71</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -303,9 +303,18 @@
   /* BOARD */
   .board {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 24px;
+    /* 4 columns, each min 200px wide. If the window is narrower than the total,
+       the board overflows horizontally and Space+drag pans smoothly. */
+    grid-template-columns: repeat(4, minmax(200px, 1fr));
+    gap: 16px;
+    overflow-x: auto;
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
   }
+  .board::-webkit-scrollbar { height: 6px; }
+  .board::-webkit-scrollbar-track { background: transparent; }
+  .board::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
   .column {
     background: var(--bg-soft);
     border: 1px solid var(--line-soft);
@@ -340,6 +349,19 @@
     color: var(--ink-faint);
   }
   .column[data-col="done"] .column-title { color: var(--done); }
+  /* Blocked column — parked work, no XP, no completion. The ⊘ icon sits in the
+     title to glance-signal "paused" without touching individual cards. */
+  .column.is-parked .column-title {
+    color: var(--ink-faint);
+  }
+  .column.is-parked .parked-icon {
+    display: inline-block;
+    margin-right: 4px;
+    font-size: 10px;
+    color: var(--ink-faint);
+    /* slight upward shift to optically center with the small mono caps */
+    transform: translateY(-1px);
+  }
 
   .column-body {
     padding: 16px;
@@ -499,6 +521,55 @@
     color: var(--ink-faint);
     text-decoration: line-through;
     text-decoration-color: var(--ink-faint);
+  }
+
+  /* Link task — task created from pasting a URL. Distinguishable by the open-link icon. */
+  .task-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .task-title-row .task-text {
+    flex: 1;
+    min-width: 0;
+    /* Link-task titles use mono so the URL feel reads through */
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0;
+    line-height: 1.35;
+    word-break: break-all;
+  }
+  .task.is-link .task-text {
+    color: var(--ink-dim);
+  }
+  /* Subtle accent indicating "this is a link" — thin left border on the card */
+  .task.is-link {
+    border-left: 2px solid rgba(212, 255, 58, 0.35);
+    padding-left: 14px; /* compensate so content doesn't shift */
+  }
+  .task-link-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-faint);
+    background: transparent;
+    border: 1px solid var(--line-soft);
+    border-radius: 3px;
+    text-decoration: none;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  .task-link-icon:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(212, 255, 58, 0.06);
+  }
+  .task.done.is-link .task-link-icon {
+    opacity: 0.5;
   }
 
   /* Edit button (replaces the old expand chevron) — small pencil affordance */
@@ -1683,7 +1754,28 @@
     padding-right: 100px;
   }
 
-  /* Quest card as a drop target — when a task is being dragged over it */
+  /* Quest card as a drop target — charging state (during dwell) and committed state. */
+  /* Charging: hover-dwell in progress. Subtle, growing glow as the user dwells. */
+  .task.is-quest.absorb-charging {
+    border-color: rgba(212, 255, 58, 0.5);
+  }
+  .task.is-quest.absorb-charging::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    border: 1px solid var(--accent);
+    opacity: 0;
+    pointer-events: none;
+    animation: absorb-charge 450ms linear forwards;
+    z-index: 4;
+  }
+  @keyframes absorb-charge {
+    0%   { opacity: 0;    box-shadow: 0 0 0 rgba(212, 255, 58, 0); }
+    100% { opacity: 0.85; box-shadow: 0 0 18px rgba(212, 255, 58, 0.4); }
+  }
+
+  /* Committed: dwell completed. Full absorb-target visual. */
   .task.is-quest.absorb-target {
     border-color: var(--accent);
     background: linear-gradient(180deg, rgba(212, 255, 58, 0.15) 0%, rgba(212, 255, 58, 0.04) 100%);
@@ -2319,6 +2411,313 @@
     }
   }
 
+  /* ============ TASK DETAIL OVERLAY ============ */
+  /* Click a task card → centered modal opens with title, description, and image
+     attachments. Paste from clipboard, drag-and-drop, or browse to add images. */
+  .task-detail-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 180;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+  }
+  .task-detail-overlay.show {
+    display: flex;
+  }
+  .task-detail-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .task-detail-modal {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 640px;
+    max-height: calc(100vh - 64px);
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 28px 32px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  }
+  .task-detail-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid var(--line-soft);
+    border-radius: 3px;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  .task-detail-close:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(212, 255, 58, 0.06);
+  }
+  .task-detail-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .task-detail-eyebrow::before {
+    content: '◇';
+    font-size: 10px;
+    color: var(--accent);
+  }
+  .task-detail-title {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 28px;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    padding: 0;
+    width: 100%;
+    outline: none;
+    border-bottom: 1px solid transparent;
+    transition: border-bottom-color 0.2s;
+  }
+  .task-detail-title:focus {
+    border-bottom-color: var(--line-soft);
+  }
+  .task-detail-desc {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink-dim);
+    background: transparent;
+    border: 1px dashed var(--line-soft);
+    border-radius: 3px;
+    padding: 12px 14px;
+    min-height: 100px;
+    max-height: 240px;
+    width: 100%;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.2s;
+  }
+  .task-detail-desc:focus {
+    border-color: var(--line);
+    border-style: solid;
+  }
+  .task-detail-desc::placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+  .task-detail-images-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 4px;
+  }
+  .task-detail-images-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .task-detail-images-hint {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--ink-faint);
+    opacity: 0.6;
+  }
+  .task-detail-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    min-height: 80px;
+    padding: 12px;
+    border: 1px dashed var(--line-soft);
+    border-radius: 3px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .task-detail-images.drop-target {
+    border-color: var(--accent);
+    background: rgba(212, 255, 58, 0.04);
+  }
+  .task-detail-images.empty::after {
+    content: 'Paste an image or drop one here';
+    grid-column: 1 / -1;
+    text-align: center;
+    align-self: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    opacity: 0.5;
+    padding: 16px;
+  }
+  .task-detail-image {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--bg-soft);
+    border: 1px solid var(--line-soft);
+    cursor: zoom-in;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .task-detail-image:hover {
+    border-color: var(--line);
+    transform: scale(1.02);
+  }
+  .task-detail-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  /* Failure state — image couldn't load from IDB or decode */
+  .task-detail-image.image-failed {
+    border-color: var(--pain-5);
+    border-style: dashed;
+  }
+  .task-detail-image.image-failed::before {
+    content: 'image failed to load';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--pain-5);
+    z-index: 1;
+  }
+  .task-detail-image-delete {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s, border-color 0.2s;
+  }
+  .task-detail-image:hover .task-detail-image-delete {
+    opacity: 1;
+  }
+  .task-detail-image-delete:hover {
+    background: rgba(248, 113, 113, 0.85);
+    border-color: rgba(248, 113, 113, 0.6);
+  }
+  .task-detail-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+  }
+  .task-detail-add-image {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    background: transparent;
+    border: 1px solid var(--line-soft);
+    border-radius: 3px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .task-detail-add-image:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .task-detail-tip {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    opacity: 0.5;
+    text-transform: uppercase;
+  }
+
+  /* Lightbox for full-size image view */
+  .task-detail-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+  }
+  .task-detail-lightbox-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+  }
+  .task-detail-lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    color: var(--ink);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .task-detail-lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Mobile: take more of the screen */
+  @media (max-width: 600px) {
+    .task-detail-overlay { padding: 12px; }
+    .task-detail-modal {
+      padding: 20px 18px 18px;
+      max-height: calc(100vh - 24px);
+    }
+    .task-detail-title { font-size: 22px; }
+    .task-detail-images { grid-template-columns: repeat(2, 1fr); }
+  }
+
   .focus-overlay {
     position: fixed;
     inset: 0;
@@ -2790,25 +3189,52 @@
   @media (max-width: 900px) {
     .app { padding: 24px 16px 140px; }
     .brand-rail { display: none; } /* no horizontal room on mobile */
-    header { flex-direction: column; align-items: flex-start; gap: 24px; }
-    .brand h1 { font-size: 32px; }
+    /* Keep brand + level on the same row to save vertical space.
+       Level block becomes compact: small "LV" label inline with a smaller number. */
+    header {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .brand h1 { font-size: 28px; }
+    .level-block {
+      flex-direction: row;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .level-block .label {
+      font-size: 9px;
+      margin-bottom: 0;
+      letter-spacing: 0.2em;
+    }
+    .level-block .value { font-size: 28px; }
+
     .velocity { grid-template-columns: 1fr 1fr; }
     .vel-cell { border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
     .vel-cell:nth-child(2n) { border-right: none; }
     .vel-cell:nth-last-child(-n+2) { border-bottom: none; }
 
-    /* Kanban stays horizontal — scroll sideways like Trello/Linear */
+    /* Backlog stays single-column on mobile (it's a pile, not a workflow) */
+    .backlog-body { grid-template-columns: 1fr; }
+    .backlog-add { margin: 12px 16px 8px; }
+
+    /* Footer */
+    footer { flex-direction: column; gap: 16px; align-items: flex-start; }
+  }
+
+  /* Phone-sized screens: thinner columns, sized to fit ~1.5 columns on screen
+     so user sees a hint of the next one. Smooth scrolling, no forced snap. */
+  @media (max-width: 600px) {
     .board {
-      grid-template-columns: repeat(3, 84vw);
+      grid-template-columns: repeat(4, 70vw);
       gap: 12px;
       overflow-x: auto;
       overflow-y: hidden;
-      scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
       /* Bleed out to the screen edge so user knows there's more */
       margin: 0 -16px;
       padding: 0 16px 8px;
-      /* Hide scrollbar but keep functionality */
       scrollbar-width: thin;
       scrollbar-color: var(--line) transparent;
     }
@@ -2817,18 +3243,10 @@
     .board::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 
     .column {
-      scroll-snap-align: start;
       min-height: 60vh;
       max-height: 75vh;
     }
     .column-body { max-height: none; }
-
-    /* Backlog stays single-column on mobile (it's a pile, not a workflow) */
-    .backlog-body { grid-template-columns: 1fr; }
-    .backlog-add { margin: 12px 16px 8px; }
-
-    /* Footer */
-    footer { flex-direction: column; gap: 16px; align-items: flex-start; }
   }
 
 </style>
@@ -2856,7 +3274,7 @@
   </div>
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v60</span>
+      <span class="eyebrow">— Kanban / v71</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <div class="level-block">
@@ -2911,6 +3329,13 @@
         <span class="column-count" data-count="doing">0</span>
       </div>
       <div class="column-body" data-body="doing"></div>
+    </div>
+    <div class="column is-parked" data-col="blocked">
+      <div class="column-header">
+        <span class="column-title"><span class="parked-icon" aria-hidden="true">⊘</span> Blocked</span>
+        <span class="column-count" data-count="blocked">0</span>
+      </div>
+      <div class="column-body" data-body="blocked"></div>
     </div>
     <div class="column" data-col="done">
       <div class="column-header">
@@ -3072,7 +3497,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v60</span>
+      <span class="footer-version">v71</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
@@ -3296,6 +3721,38 @@
   </div>
 </div>
 
+<!-- Task detail overlay — click a task card to expand it here.
+     Editable title + description + image attachments. -->
+<div class="task-detail-overlay" id="taskDetailOverlay" aria-hidden="true">
+  <div class="task-detail-backdrop" id="taskDetailBackdrop"></div>
+  <div class="task-detail-modal" id="taskDetailModal">
+    <button class="task-detail-close" id="taskDetailClose" aria-label="Close">×</button>
+    <div class="task-detail-eyebrow" id="taskDetailEyebrow">Task</div>
+    <input type="text" class="task-detail-title" id="taskDetailTitle" placeholder="Untitled" maxlength="200">
+    <textarea class="task-detail-desc" id="taskDetailDesc" placeholder="Add notes, context, anything that helps you remember…"></textarea>
+
+    <div class="task-detail-images-header">
+      <span class="task-detail-images-label">Images</span>
+      <span class="task-detail-images-hint">Paste with Cmd+V · or drop files here</span>
+    </div>
+    <div class="task-detail-images" id="taskDetailImages">
+      <!-- Thumbnails appended here -->
+    </div>
+    <input type="file" id="taskDetailFilePicker" accept="image/*" multiple style="display:none">
+
+    <div class="task-detail-footer">
+      <button class="task-detail-add-image" id="taskDetailAddImage">+ image</button>
+      <span class="task-detail-tip">Esc to close</span>
+    </div>
+  </div>
+
+  <!-- Lightbox for full-size image preview -->
+  <div class="task-detail-lightbox" id="taskDetailLightbox" style="display:none">
+    <button class="task-detail-lightbox-close" id="taskDetailLightboxClose" aria-label="Close">×</button>
+    <img class="task-detail-lightbox-img" id="taskDetailLightboxImg" alt="">
+  </div>
+</div>
+
 <!-- Focus mode overlay -->
 <div class="focus-overlay" id="focusOverlay">
   <div class="focus-topbar">
@@ -3491,6 +3948,124 @@ function passesPainFilter(task) {
 }
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function nowMs() { return Date.now(); }
+
+// ============ IMAGE STORE (IndexedDB) ============
+// Image attachments live in IndexedDB as Blobs — way more room than localStorage
+// (browsers typically allow many tens or hundreds of MB). Tasks just store IDs.
+// Browser-scoped: clearing browser data wipes images, but tasks remain. The
+// upcoming backup/restore feature will package both into a single file.
+const IDB_NAME = 'kanban-quest-images';
+const IDB_STORE = 'images';
+let _idbPromise = null;
+function openImageDB() {
+  if (_idbPromise) return _idbPromise;
+  _idbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return _idbPromise;
+}
+async function idbPut(id, blob) {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(blob, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbGet(id) {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbDelete(id) {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+// In-memory cache: id → data URL. Data URLs work on file:// (object URLs sometimes don't).
+// 33% size overhead vs object URLs but completely portable.
+const imageUrlCache = new Map();
+async function getImageUrl(id) {
+  if (imageUrlCache.has(id)) return imageUrlCache.get(id);
+  const blob = await idbGet(id);
+  if (!blob) return null;
+  // Convert blob to data URL (works on file:// origin, no URL.createObjectURL issues)
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+  imageUrlCache.set(id, dataUrl);
+  return dataUrl;
+}
+function revokeImageUrl(id) {
+  // Data URLs don't need explicit revocation, but we still drop the cache entry
+  imageUrlCache.delete(id);
+}
+
+// ============ URL HELPERS ============
+// Detect and clean URLs. Strips tracking junk so the displayed label stays sleek.
+const URL_RE = /^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/[^\s]*)?$/i;
+// Tracking params we always strip from the displayed URL
+const TRACKING_PARAMS = new Set([
+  'utm_id','utm_source','utm_medium','utm_campaign','utm_term','utm_content',
+  'fbclid','gclid','msclkid','dclid','yclid',
+  'mc_cid','mc_eid',
+  '_ga','_gl','ref','ref_src','ref_url',
+  'igshid','si','feature','spm',
+]);
+
+// Strict URL detection — only treat as URL if it starts with http:// or https://.
+// This avoids false positives like "file.todo" or "task.notes" being misinterpreted.
+// Most pastes from browsers/address bars include the protocol anyway.
+function isUrl(text) {
+  if (!text) return false;
+  const trimmed = text.trim();
+  if (trimmed.includes(' ')) return false;
+  return /^https?:\/\//i.test(trimmed) && URL_RE.test(trimmed);
+}
+
+// Returns { fullUrl, displayLabel } for a pasted URL string.
+// displayLabel is a cleaned, short form for the card title (e.g. "skool.com/ai-gamedev/about").
+function parseUrl(raw) {
+  let s = raw.trim();
+  if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+  let u;
+  try { u = new URL(s); } catch (e) { return { fullUrl: raw, displayLabel: raw }; }
+  // Build a cleaned query string with only non-tracking params
+  const cleanParams = new URLSearchParams();
+  u.searchParams.forEach((value, key) => {
+    if (!TRACKING_PARAMS.has(key.toLowerCase())) cleanParams.append(key, value);
+  });
+  const cleanQuery = cleanParams.toString();
+  // Reconstruct a clean full URL (this is what we open when clicked)
+  const cleanUrl = u.origin + u.pathname + (cleanQuery ? '?' + cleanQuery : '') + u.hash;
+  // Display label — domain + path, no protocol, no query, with leading "www." stripped
+  let host = u.host.replace(/^www\./, '');
+  let path = u.pathname.replace(/\/+$/, ''); // trim trailing slash
+  let label = host + path;
+  // Cap visual length
+  if (label.length > 60) label = label.slice(0, 57) + '…';
+  return { fullUrl: cleanUrl, displayLabel: label };
+}
 const DAY = 24 * 60 * 60 * 1000;
 
 // ============ STORAGE (localStorage — works anywhere) ============
@@ -3636,7 +4211,7 @@ function render() {
   updateCatMood(sevenDayV.painThis);
 
   // Columns — main board only shows TOP-LEVEL items (no questId, not backlog)
-  ['todo','doing','done'].forEach(col => {
+  ['todo','doing','blocked','done'].forEach(col => {
     const body = document.querySelector(`[data-body="${col}"]`);
     const list = state.tasks.filter(t => t.col === col && !t.backlog && !t.questId && passesPainFilter(t));
     document.querySelector(`[data-count="${col}"]`).textContent = list.length;
@@ -3645,6 +4220,11 @@ function render() {
       const e = document.createElement('div');
       e.className = 'empty';
       e.textContent = 'drag here to complete';
+      body.appendChild(e);
+    } else if (list.length === 0 && col === 'blocked') {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'waiting on something — park it here';
       body.appendChild(e);
     }
     list.forEach(t => body.appendChild(renderTask(t)));
@@ -3761,37 +4341,74 @@ function renderTask(t) {
       if (e.target.closest('button, input, textarea, [contenteditable="true"], .pip, .pain-pips, .task-text, .task-desc-render')) return;
       openQuest(t.id);
     });
+    // Quest card as a drop target — requires a hover dwell so accidental
+    // pass-overs while dragging don't accidentally link the task.
+    // The flow:
+    //   1. Cursor enters Quest → start dwell timer (450ms), add .absorb-charging
+    //   2. Timer fires → switch to .absorb-target (committed, will absorb on drop)
+    //   3. Cursor leaves → cancel timer, remove both classes
+    //   4. Drop event only absorbs if .absorb-target is on the element
+    const DWELL_MS = 450;
+    let dwellTimer = null;
+    let isCommitted = false; // true once dwell completes — only then is the drop "valid"
 
-    // Quest card as a drop target — absorb a dropped task into this Quest.
-    // Done Quests are NOT valid absorb targets — they're finished, don't keep accumulating.
+    const cancelDwell = () => {
+      if (dwellTimer) { clearTimeout(dwellTimer); dwellTimer = null; }
+      isCommitted = false;
+      el.classList.remove('absorb-charging', 'absorb-target');
+    };
+
     el.addEventListener('dragover', (e) => {
       if (t.col === 'done') return; // closed Quest, no new tasks
       const draggedId = currentDraggedTaskId;
       if (!draggedId || draggedId === t.id) return;
       const dragged = state.tasks.find(x => x.id === draggedId);
       if (!dragged || dragged.type === 'quest') return; // only tasks can be absorbed
+
+      // Only call preventDefault once the dwell has completed — that's how we tell
+      // the browser "this is a valid drop target." Before commitment, the drop
+      // bubbles through to the column underneath like a normal pass-over.
+      if (isCommitted) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+      }
+
+      // Start the dwell timer on first entry
+      if (!dwellTimer && !isCommitted) {
+        el.classList.add('absorb-charging');
+        dwellTimer = setTimeout(() => {
+          el.classList.remove('absorb-charging');
+          el.classList.add('absorb-target');
+          isCommitted = true;
+          dwellTimer = null;
+        }, DWELL_MS);
+      }
+    });
+
+    el.addEventListener('dragleave', (e) => {
+      // Only cancel when the cursor truly leaves the Quest card (not just child element)
+      if (!el.contains(e.relatedTarget)) {
+        cancelDwell();
+      }
+    });
+
+    el.addEventListener('drop', (e) => {
+      // Drop only absorbs if dwell has completed
+      if (!isCommitted) {
+        cancelDwell();
+        return; // bubble to column's drop handler
+      }
+      if (t.col === 'done') { cancelDwell(); return; }
+      const draggedId = e.dataTransfer.getData('text/plain');
+      if (!draggedId || draggedId === t.id) { cancelDwell(); return; }
+      const dragged = state.tasks.find(x => x.id === draggedId);
+      if (!dragged || dragged.type === 'quest') { cancelDwell(); return; }
       e.preventDefault();
       e.stopPropagation();
-      e.dataTransfer.dropEffect = 'move';
-      el.classList.add('absorb-target');
-    });
-    el.addEventListener('dragleave', (e) => {
-      if (!el.contains(e.relatedTarget)) el.classList.remove('absorb-target');
-    });
-    el.addEventListener('drop', (e) => {
-      if (t.col === 'done') return; // closed Quest, ignore drop — bubbles to column instead
-      const draggedId = e.dataTransfer.getData('text/plain');
-      if (!draggedId || draggedId === t.id) return;
-      const dragged = state.tasks.find(x => x.id === draggedId);
-      if (!dragged || dragged.type === 'quest') return;
-      e.preventDefault();
-      e.stopPropagation(); // prevent the column's drop handler from also firing
-      el.classList.remove('absorb-target');
-      // Clear any column drag-over class that may have been set
+      cancelDwell();
       document.querySelectorAll('.column.drag-over').forEach(c => c.classList.remove('drag-over'));
-      // Link the dragged task to this Quest
       dragged.questId = t.id;
-      // Also clear any backlog flag — linking to a Quest implies it's active
       dragged.backlog = false;
       save(); render();
     });
@@ -3810,6 +4427,9 @@ function renderTask(t) {
   text.className = 'task-text';
   text.textContent = t.text;
   text.title = 'Click to edit';
+  if (t.url) {
+    el.classList.add('is-link');
+  }
   text.addEventListener('click', (e) => {
     if (text.getAttribute('contenteditable') === 'true') return;
     e.stopPropagation();
@@ -3848,7 +4468,26 @@ function renderTask(t) {
     }
   });
   text.addEventListener('mousedown', (e) => e.stopPropagation());
-  el.appendChild(text);
+
+  // For URL-tasks, wrap the title and a link-open icon in a row so they sit inline.
+  if (t.url) {
+    const titleRow = document.createElement('div');
+    titleRow.className = 'task-title-row';
+    titleRow.appendChild(text);
+    const linkBtn = document.createElement('a');
+    linkBtn.className = 'task-link-icon';
+    linkBtn.href = t.url;
+    linkBtn.target = '_blank';
+    linkBtn.rel = 'noopener noreferrer';
+    linkBtn.title = `Open ${t.url}`;
+    linkBtn.textContent = '↗';
+    linkBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+    linkBtn.addEventListener('click', (e) => e.stopPropagation());
+    titleRow.appendChild(linkBtn);
+    el.appendChild(titleRow);
+  } else {
+    el.appendChild(text);
+  }
 
   // Description: either rendered (display) or textarea (editing)
   if (isEditingDesc) {
@@ -4027,9 +4666,24 @@ function renderTask(t) {
   el.addEventListener('dragend', () => {
     el.classList.remove('dragging');
     currentDraggedTaskId = null;
-    // Clean up any lingering absorb-target visuals
-    document.querySelectorAll('.absorb-target').forEach(q => q.classList.remove('absorb-target'));
+    // Clean up any lingering absorb visuals (both charging and committed states)
+    document.querySelectorAll('.absorb-target, .absorb-charging').forEach(q => {
+      q.classList.remove('absorb-target', 'absorb-charging');
+    });
   });
+
+  // Single-click on a regular (non-quest) task card opens the detail overlay.
+  // Excludes clicks on interactive children — title editing, link icon, edit pencil,
+  // unlink button, pain pips — those should retain their own click behavior.
+  if (!isQuest) {
+    el.addEventListener('click', (e) => {
+      // Skip if the click landed on any interactive control inside the card
+      if (e.target.closest('button, input, textarea, a, [contenteditable="true"], .pip, .pain-pips, .task-text, .task-desc-render, .task-desc, .task-link-icon')) return;
+      // Don't expand cards that are mid-drag
+      if (el.classList.contains('dragging')) return;
+      openTaskDetail(t.id);
+    });
+  }
 
   return el;
 }
@@ -4053,31 +4707,66 @@ function renderPainSelects() {
 }
 
 // ============ ADD ============
+// Track most-recent mousedown to detect if a blur was caused by clicking on a
+// non-focusable element (e.g. pain pips, which are divs, not buttons).
+let _lastMouseDownTarget = null;
+document.addEventListener('mousedown', (e) => { _lastMouseDownTarget = e.target; }, true);
+
 document.querySelectorAll('.add-input').forEach(input => {
+  // Commit the typed text as a new task. Returns true if a task was created.
+  function commit() {
+    const text = input.value.trim();
+    if (!text) return false;
+    const source = input.dataset.add;
+    const isBacklog = source === 'backlog';
+    const isQuestInput = source === 'quest-todo';
+    const col = isBacklog ? 'todo' : (isQuestInput ? 'todo' : source);
+
+    const newTask = {
+      id: uid(),
+      text,
+      col,
+      backlog: isBacklog,
+      questId: isQuestInput ? currentQuestId : null,
+      type: isQuestInput ? 'task' : (pendingType[source] || 'task'),
+      pain: pendingPain[source] || 3,
+      createdAt: nowMs(),
+    };
+    if (isUrl(text)) {
+      const { fullUrl, displayLabel } = parseUrl(text);
+      newTask.text = displayLabel;
+      newTask.url = fullUrl;
+    }
+    state.tasks.push(newTask);
+    input.value = '';
+    save(); render();
+    return true;
+  }
+
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
-      const text = input.value.trim();
-      if (!text) return;
-      const source = input.dataset.add;
-      const isBacklog = source === 'backlog';
-      const isQuestInput = source === 'quest-todo';
-      const col = isBacklog ? 'todo' : (isQuestInput ? 'todo' : source);
-      const newTask = {
-        id: uid(),
-        text,
-        col,
-        backlog: isBacklog,
-        questId: isQuestInput ? currentQuestId : null,
-        // Tasks inside a Quest are always 'task' type (no nested Quests)
-        type: isQuestInput ? 'task' : (pendingType[source] || 'task'),
-        pain: pendingPain[source] || 3,
-        createdAt: nowMs(),
-      };
-      state.tasks.push(newTask);
+      e.preventDefault();
+      if (commit()) input.blur();
+    } else if (e.key === 'Escape') {
+      // Cancel: clear without creating, exit input
       input.value = '';
       input.blur();
-      save(); render();
     }
+  });
+
+  // Auto-commit on blur — clicking outside the input creates the task.
+  // But: if the click landed inside the SAME add-task container (e.g. user clicked
+  // the task/quest toggle, pain pips, or any other config control), don't commit —
+  // the user is still configuring this same draft task. Check both:
+  //   - e.relatedTarget (works for focus moving to buttons/inputs)
+  //   - the most recent mousedown (works for non-focusable elements like pips)
+  input.addEventListener('blur', (e) => {
+    const addRow = input.closest('.add-task');
+    if (addRow) {
+      if (e.relatedTarget && addRow.contains(e.relatedTarget)) return;
+      if (_lastMouseDownTarget && addRow.contains(_lastMouseDownTarget)) return;
+    }
+    commit();
   });
 });
 
@@ -4570,6 +5259,256 @@ function bindQuestBoardDnD() {
   });
 }
 bindQuestBoardDnD();
+
+// ============ TASK DETAIL OVERLAY ============
+// Click a task card → expand it into a modal with editable title, description,
+// and image attachments. Paste images (Cmd+V), drop image files, or browse.
+// Images are stored in IndexedDB (see openImageDB above) and referenced by ID
+// on the task via task.attachments = [imageId, ...].
+
+let detailTaskId = null; // the task currently being viewed/edited
+
+function openTaskDetail(taskId) {
+  const t = state.tasks.find(x => x.id === taskId);
+  if (!t) return;
+  // Don't open detail for Quest cards — clicking those opens the Quest view instead
+  if (t.type === 'quest') return;
+  detailTaskId = taskId;
+  const overlay = document.getElementById('taskDetailOverlay');
+  const titleEl = document.getElementById('taskDetailTitle');
+  const descEl  = document.getElementById('taskDetailDesc');
+  const eyebrow = document.getElementById('taskDetailEyebrow');
+
+  titleEl.value = t.text || '';
+  descEl.value  = t.description || '';
+  eyebrow.textContent = t.url ? 'Link' : 'Task';
+
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden', 'false');
+  // Render existing image thumbnails (async — they load from IndexedDB)
+  renderDetailImages();
+  // Focus the title after a tick so it doesn't fight with the open animation
+  setTimeout(() => titleEl.focus(), 50);
+}
+
+function closeTaskDetail() {
+  // Commit any pending text edits before closing
+  saveDetailFields();
+  detailTaskId = null;
+  const overlay = document.getElementById('taskDetailOverlay');
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden', 'true');
+  // Close lightbox if open
+  document.getElementById('taskDetailLightbox').style.display = 'none';
+}
+
+function saveDetailFields() {
+  if (!detailTaskId) return;
+  const t = state.tasks.find(x => x.id === detailTaskId);
+  if (!t) return;
+  const newTitle = document.getElementById('taskDetailTitle').value.trim();
+  const newDesc  = document.getElementById('taskDetailDesc').value.trim();
+  let changed = false;
+  if (newTitle && newTitle !== t.text) { t.text = newTitle; changed = true; }
+  if (newDesc !== (t.description || '')) { t.description = newDesc; changed = true; }
+  if (changed) { save(); render(); }
+}
+
+async function renderDetailImages() {
+  const grid = document.getElementById('taskDetailImages');
+  grid.innerHTML = '';
+  if (!detailTaskId) return;
+  const t = state.tasks.find(x => x.id === detailTaskId);
+  if (!t) return;
+  const attachments = t.attachments || [];
+  grid.classList.toggle('empty', attachments.length === 0);
+  for (const id of attachments) {
+    const tile = document.createElement('div');
+    tile.className = 'task-detail-image';
+    tile.dataset.imageId = id;
+    const img = document.createElement('img');
+    img.alt = '';
+    // Show a clear failure state if the image can't be decoded/displayed
+    img.addEventListener('error', () => {
+      tile.classList.add('image-failed');
+      console.warn('Image failed to display for id:', id);
+    });
+    tile.appendChild(img);
+    const del = document.createElement('button');
+    del.className = 'task-detail-image-delete';
+    del.textContent = '×';
+    del.title = 'Delete image';
+    del.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await removeAttachment(id);
+    });
+    tile.appendChild(del);
+    tile.addEventListener('click', () => openLightbox(id));
+    grid.appendChild(tile);
+    // Load image asynchronously; log clearly if it fails so we can diagnose
+    getImageUrl(id)
+      .then(url => {
+        if (url) {
+          img.src = url;
+        } else {
+          console.warn('Image blob not found in IndexedDB for id:', id);
+          tile.classList.add('image-failed');
+        }
+      })
+      .catch(err => {
+        console.error('Image fetch error for id:', id, err);
+        tile.classList.add('image-failed');
+      });
+  }
+}
+
+async function addImageBlob(blob) {
+  if (!detailTaskId) {
+    console.warn('addImageBlob called with no active task');
+    return;
+  }
+  if (!blob || !blob.type || !blob.type.startsWith('image/')) {
+    console.warn('addImageBlob rejected: not an image blob', blob);
+    return;
+  }
+  const t = state.tasks.find(x => x.id === detailTaskId);
+  if (!t) {
+    console.warn('addImageBlob: task not found');
+    return;
+  }
+  const id = 'img_' + uid();
+  try {
+    await idbPut(id, blob);
+    // Verify it actually stored — paranoid but useful for diagnosing failures
+    const check = await idbGet(id);
+    if (!check) {
+      console.error('Image stored but immediate read returned null. ID:', id);
+      alert('Image failed to save. Your browser may have IndexedDB disabled or storage may be full.');
+      return;
+    }
+  } catch (err) {
+    console.error('Failed to store image:', err);
+    alert('Image storage failed: ' + (err.message || err));
+    return;
+  }
+  if (!t.attachments) t.attachments = [];
+  t.attachments.push(id);
+  save();
+  renderDetailImages();
+}
+
+async function removeAttachment(imageId) {
+  if (!detailTaskId) return;
+  const t = state.tasks.find(x => x.id === detailTaskId);
+  if (!t || !t.attachments) return;
+  t.attachments = t.attachments.filter(id => id !== imageId);
+  save();
+  renderDetailImages();
+  // Clean up IDB and the object URL cache
+  revokeImageUrl(imageId);
+  try { await idbDelete(imageId); } catch (e) { /* swallow */ }
+}
+
+function openLightbox(imageId) {
+  const lightbox = document.getElementById('taskDetailLightbox');
+  const img = document.getElementById('taskDetailLightboxImg');
+  getImageUrl(imageId).then(url => {
+    if (url) {
+      img.src = url;
+      lightbox.style.display = 'flex';
+    }
+  });
+}
+function closeLightbox() {
+  document.getElementById('taskDetailLightbox').style.display = 'none';
+}
+
+// --- Wire overlay controls ---
+document.getElementById('taskDetailClose').addEventListener('click', closeTaskDetail);
+document.getElementById('taskDetailBackdrop').addEventListener('click', closeTaskDetail);
+document.getElementById('taskDetailLightboxClose').addEventListener('click', closeLightbox);
+document.getElementById('taskDetailLightbox').addEventListener('click', (e) => {
+  // Click outside the image (on the dark background) closes the lightbox
+  if (e.target.id === 'taskDetailLightbox') closeLightbox();
+});
+
+// Save title and description on blur (and on Enter for title)
+document.getElementById('taskDetailTitle').addEventListener('blur', saveDetailFields);
+document.getElementById('taskDetailTitle').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    e.target.blur();
+    document.getElementById('taskDetailDesc').focus();
+  }
+});
+document.getElementById('taskDetailDesc').addEventListener('blur', saveDetailFields);
+
+// File picker (+image button)
+document.getElementById('taskDetailAddImage').addEventListener('click', () => {
+  document.getElementById('taskDetailFilePicker').click();
+});
+document.getElementById('taskDetailFilePicker').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  for (const f of files) {
+    if (f.type.startsWith('image/')) await addImageBlob(f);
+  }
+  e.target.value = ''; // allow re-selecting same file
+});
+
+// Paste handler — when the overlay is open, Cmd+V on text fields normally pastes
+// text; but if the clipboard has an image, we capture it instead.
+document.addEventListener('paste', async (e) => {
+  if (!detailTaskId) return;
+  const items = (e.clipboardData && e.clipboardData.items) || [];
+  for (const item of items) {
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (blob) await addImageBlob(blob);
+      return; // only handle the first image
+    }
+  }
+});
+
+// Drag-and-drop image files onto the image grid
+(function setupImageDrop() {
+  const grid = document.getElementById('taskDetailImages');
+  ['dragenter', 'dragover'].forEach(evt => {
+    grid.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      grid.classList.add('drop-target');
+    });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    grid.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      grid.classList.remove('drop-target');
+    });
+  });
+  grid.addEventListener('drop', async (e) => {
+    const files = Array.from(e.dataTransfer.files || []);
+    for (const f of files) {
+      if (f.type.startsWith('image/')) await addImageBlob(f);
+    }
+  });
+})();
+
+// Esc closes the overlay (and lightbox)
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const lightbox = document.getElementById('taskDetailLightbox');
+  if (lightbox.style.display === 'flex') {
+    closeLightbox();
+    e.stopPropagation();
+    return;
+  }
+  if (detailTaskId) {
+    closeTaskDetail();
+    e.stopPropagation();
+  }
+}, true); // capture phase, runs before other Esc handlers
 
 // ============ FOCUS MODE ============
 // Web Audio context — created lazily on first user interaction (autoplay rules)
@@ -5400,7 +6339,8 @@ document.addEventListener('contextmenu', (e) => {
 // If the drag starts inside a .column-body, that column scrolls; otherwise the window scrolls.
 // Direction: natural (drag down moves content down; pulls earlier content into view).
 let panSpaceHeld = false;
-let panDrag = null; // { target: HTMLElement | window, startX, startY, startScrollLeft, startScrollTop }
+let panDrag = null; // { hTarget, vTarget, useWindow, startX, startY, ... }
+let panInertia = null; // RAF id for ongoing momentum scroll
 
 function panIsAllowed() {
   // Disabled in focus mode and while user is typing
@@ -5440,45 +6380,114 @@ window.addEventListener('blur', () => {
 document.addEventListener('mousedown', (e) => {
   if (!panSpaceHeld) return;
   if (e.button !== 0) return;
-  // Determine scroll target: nearest scrollable ancestor of the click point
-  let target = e.target.closest('.column-body');
-  if (!target) target = window; // page scroll fallback
-  panDrag = {
-    target,
-    startX: e.clientX,
-    startY: e.clientY,
-    startScrollLeft: target === window ? window.scrollX : target.scrollLeft,
-    startScrollTop:  target === window ? window.scrollY : target.scrollTop,
-  };
+  // Cancel any running inertia from a previous flick
+  if (panInertia) { cancelAnimationFrame(panInertia); panInertia = null; }
+  // Find vertical scroller (column body) and horizontal scroller (board) separately.
+  // This way Space+drag can pan both axes simultaneously: column scrolls Y, board scrolls X.
+  const vTarget = e.target.closest('.column-body');
+  const hTarget = e.target.closest('.board');
+  // Fallback to window if neither is found
+  const now = performance.now();
+  if (!vTarget && !hTarget) {
+    panDrag = {
+      hTarget: null, vTarget: null, useWindow: true,
+      startX: e.clientX, startY: e.clientY,
+      startScrollLeft: window.scrollX, startScrollTop: window.scrollY,
+      lastX: e.clientX, lastY: e.clientY, lastT: now,
+      vX: 0, vY: 0,
+    };
+  } else {
+    panDrag = {
+      hTarget,
+      vTarget,
+      useWindow: false,
+      startX: e.clientX, startY: e.clientY,
+      startScrollLeft: hTarget ? hTarget.scrollLeft : 0,
+      startScrollTop:  vTarget ? vTarget.scrollTop : 0,
+      lastX: e.clientX, lastY: e.clientY, lastT: now,
+      vX: 0, vY: 0,
+    };
+  }
   document.body.classList.add('pan-dragging');
   e.preventDefault();
-  e.stopPropagation(); // don't let it engage daystrip/task drag handlers
-}, true); // capture phase so we win over other mousedown handlers
+  e.stopPropagation();
+}, true);
 
 document.addEventListener('mousemove', (e) => {
   if (!panDrag) return;
   const dx = e.clientX - panDrag.startX;
   const dy = e.clientY - panDrag.startY;
+  // Track velocity over recent samples for inertia. To capture true "release flick"
+  // velocity rather than averaging across a long slow drag, we use a short
+  // rolling window: weight the most recent sample heavily.
+  const now = performance.now();
+  const dt = now - panDrag.lastT;
+  if (dt > 0) {
+    const instantVX = (e.clientX - panDrag.lastX) / dt; // px per ms
+    const instantVY = (e.clientY - panDrag.lastY) / dt;
+    // Heavy weight on the most recent sample — gives ~70% weight to the latest move
+    panDrag.vX = panDrag.vX * 0.3 + instantVX * 0.7;
+    panDrag.vY = panDrag.vY * 0.3 + instantVY * 0.7;
+    panDrag.lastX = e.clientX;
+    panDrag.lastY = e.clientY;
+    panDrag.lastT = now;
+  }
   // Natural direction: drag right → content moves right → scrollLeft decreases
-  const newLeft = panDrag.startScrollLeft - dx;
-  const newTop  = panDrag.startScrollTop  - dy;
-  if (panDrag.target === window) {
-    window.scrollTo(newLeft, newTop);
+  if (panDrag.useWindow) {
+    window.scrollTo(panDrag.startScrollLeft - dx, panDrag.startScrollTop - dy);
   } else {
-    panDrag.target.scrollLeft = newLeft;
-    panDrag.target.scrollTop  = newTop;
+    if (panDrag.hTarget) panDrag.hTarget.scrollLeft = panDrag.startScrollLeft - dx;
+    if (panDrag.vTarget) panDrag.vTarget.scrollTop  = panDrag.startScrollTop  - dy;
   }
   e.preventDefault();
 }, true);
 
 document.addEventListener('mouseup', (e) => {
   if (!panDrag) return;
+  // Capture release velocity for inertia
+  const releaseVX = panDrag.vX || 0;
+  const releaseVY = panDrag.vY || 0;
+  const hTarget = panDrag.hTarget;
+  const vTarget = panDrag.vTarget;
+  const useWindow = panDrag.useWindow;
   panDrag = null;
   document.body.classList.remove('pan-dragging');
-  // Keep pan-mode class if Space is still held
   if (!panSpaceHeld) document.body.classList.remove('pan-mode');
   e.preventDefault();
   e.stopPropagation();
+
+  // Start inertia: decay velocity over time, applying scroll deltas each frame.
+  // Tuning: lower MIN_V + higher FRICTION → longer, smoother glide like iOS native scroll.
+  const MIN_V = 0.01; // px/ms — falls below this, we stop
+  const FRICTION = 0.97; // per-frame multiplier (~3% energy loss per frame at 60fps)
+  if (Math.abs(releaseVX) < MIN_V && Math.abs(releaseVY) < MIN_V) return;
+
+  let vx = -releaseVX; // invert: cursor moved right → content scrolled left → on release, continue scrolling left
+  let vy = -releaseVY;
+  let lastFrame = performance.now();
+
+  function step(now) {
+    const dt = Math.min(now - lastFrame, 32); // cap to avoid huge jumps on tab-throttle
+    lastFrame = now;
+    // Apply pixels of scroll this frame
+    const pxX = vx * dt;
+    const pxY = vy * dt;
+    if (useWindow) {
+      window.scrollBy(pxX, pxY);
+    } else {
+      if (hTarget) hTarget.scrollLeft += pxX;
+      if (vTarget) vTarget.scrollTop += pxY;
+    }
+    // Decay
+    vx *= FRICTION;
+    vy *= FRICTION;
+    if (Math.abs(vx) < MIN_V && Math.abs(vy) < MIN_V) {
+      panInertia = null;
+      return;
+    }
+    panInertia = requestAnimationFrame(step);
+  }
+  panInertia = requestAnimationFrame(step);
 }, true);
 
 
