@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v71</title>
+<title>Kanban Quest — v78</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -108,24 +108,27 @@
     z-index: 2;
     max-width: 1400px;
     margin: 0 auto;
-    padding: 24px 48px 12px 88px; /* extra left for the vertical rail */
+    padding: 24px 48px 12px 48px;
   }
 
-  /* Vertical view-nav rail — small "Stats" and "Journal" labels stacked
-     vertically in the left gutter. Text reads normally, right-aligned. */
-  .brand-rail {
-    position: absolute;
-    top: 280px;
-    left: 0;
-    /* Wider so labels have room and right-edge sits cleanly against the kanban */
-    width: 76px;
+  /* View row — wraps the primary tabs (Active/Backlog) and the auxiliary
+     nav items (Stats/Journal) on the same line, packed close together.
+     Use baseline alignment so the text inside buttons and the standalone
+     labels share a visual baseline (instead of centering by box height,
+     which made the smaller labels sit lower than the button text). */
+  .view-row {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 12px;
-    padding-right: 12px;
-    z-index: 3;
-    user-select: none;
+    align-items: baseline;
+    gap: 28px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  /* Stats / Journal nav — sits inline beside the view-toggle. Same visual
+     language as before (small mono caps, faint by default, accent when active). */
+  .view-nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
   }
   .view-nav-item {
     font-family: var(--mono);
@@ -449,6 +452,28 @@
     position: relative;
     transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
     user-select: none;
+    /* Cap card height so a giant note doesn't bloat the column.
+       Click the card body to open the detail overlay and read the full content. */
+    max-height: 220px;
+    overflow: hidden;
+  }
+  /* While editing the description, let the textarea grow naturally —
+     otherwise the user can't see what they're typing past the cutoff */
+  .task.editing-desc {
+    max-height: none;
+    overflow: visible;
+  }
+  /* Subtle fade-out gradient at the bottom of clipped cards, hinting that
+     there's more content. Pseudo-element so it doesn't intercept clicks. */
+  .task.is-clipped::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 32px;
+    background: linear-gradient(to bottom, transparent, var(--bg-card));
+    pointer-events: none;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
   }
   .task:hover { border-color: var(--ink-faint); transform: translateY(-1px); }
   .task.dragging { opacity: 0.4; cursor: grabbing; }
@@ -501,7 +526,12 @@
     font-size: 15px;
     line-height: 1.4;
     color: var(--ink);
-    word-break: break-word;
+    /* overflow-wrap: anywhere is a last-resort; word-break: normal means
+       words stay intact unless they literally can't fit. Together: words wrap
+       at spaces normally, very long words (like URLs) wrap only when they exceed
+       the container width. No mid-word splitting on regular titles. */
+    word-break: normal;
+    overflow-wrap: break-word;
     padding-right: 76px;
     margin-bottom: 10px;
     cursor: text;
@@ -537,7 +567,9 @@
     font-size: 13px;
     letter-spacing: 0;
     line-height: 1.35;
-    word-break: break-all;
+    /* Smart-labels have natural word boundaries; don't mid-break long tokens */
+    word-break: normal;
+    overflow-wrap: break-word;
   }
   .task.is-link .task-text {
     color: var(--ink-dim);
@@ -606,7 +638,8 @@
     color: var(--ink-dim);
     margin: -2px 0 10px 0;
     white-space: pre-wrap;
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: break-word;
     padding-right: 4px;
     cursor: text;
     border-radius: 2px;
@@ -3188,7 +3221,6 @@
 
   @media (max-width: 900px) {
     .app { padding: 24px 16px 140px; }
-    .brand-rail { display: none; } /* no horizontal room on mobile */
     /* Keep brand + level on the same row to save vertical space.
        Level block becomes compact: small "LV" label inline with a smaller number. */
     header {
@@ -3268,13 +3300,9 @@
   </div>
 </div>
 <div class="app">
-  <div class="brand-rail">
-    <span class="view-nav-item" data-view-nav="stats" title="Stats — press S">Stats</span>
-    <span class="view-nav-item" data-view-nav="journal" title="Journal — press R">Journal</span>
-  </div>
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v71</span>
+      <span class="eyebrow">— Kanban / v78</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <div class="level-block">
@@ -3291,13 +3319,19 @@
     <div class="xp-bar"><div class="xp-bar-fill" id="xpFill" style="width:0%"></div></div>
   </div>
 
-  <div class="view-toggle" id="viewToggle">
-    <button class="view-toggle-btn active" data-view="active">
-      Active <span class="count" id="activeCount">0</span>
-    </button>
-    <button class="view-toggle-btn" data-view="backlog">
-      Backlog <span class="count" id="backlogCount">0</span>
-    </button>
+  <div class="view-row">
+    <div class="view-toggle" id="viewToggle">
+      <button class="view-toggle-btn active" data-view="active">
+        Active <span class="count" id="activeCount">0</span>
+      </button>
+      <button class="view-toggle-btn" data-view="backlog">
+        Backlog <span class="count" id="backlogCount">0</span>
+      </button>
+    </div>
+    <div class="view-nav">
+      <span class="view-nav-item" data-view-nav="stats" title="Stats — press S">Stats</span>
+      <span class="view-nav-item" data-view-nav="journal" title="Journal — press R">Journal</span>
+    </div>
   </div>
 
   <div class="board" id="board" data-view-target="active">
@@ -3445,7 +3479,6 @@
       <span class="breadcrumb-current">Journal</span>
     </div>
     <div class="journal">
-      <div class="journal-eyebrow">Journal</div>
       <h1 class="journal-title">What you've <em>done.</em></h1>
       <div id="journalBody"></div>
     </div>
@@ -3459,7 +3492,6 @@
       <span class="breadcrumb-current">Stats</span>
     </div>
     <div class="stats-page">
-      <div class="stats-eyebrow">Stats</div>
       <h1 class="stats-title">The past&nbsp;<em class="stats-range" id="statsRange" title="Swipe / scroll up &darr; or click to change range"><span class="range-viewport"><span class="range-drum" id="statsRangeDrum"></span></span></em></h1>
       <div class="velocity stats-velocity">
         <div class="vel-cell vel-cell-quest">
@@ -3497,7 +3529,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v71</span>
+      <span class="footer-version">v78</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
@@ -4045,6 +4077,64 @@ function isUrl(text) {
 
 // Returns { fullUrl, displayLabel } for a pasted URL string.
 // displayLabel is a cleaned, short form for the card title (e.g. "skool.com/ai-gamedev/about").
+// Words that don't add information when they appear as a URL path segment.
+// Most sites use these as routing prefixes (e.g. instagram.com/p/, amazon.com/dp/, etc).
+const URL_FILLER_SEGMENTS = new Set([
+  'watch','view','edit','share','status','comments','permalink',
+  'post','posts','item','feed','home','index','page','pages',
+  'detail','details','article','articles','entry','entries',
+  'show','open','play',
+]);
+
+// Heuristic: is this path segment "junk" — an ID, hash, or noise we should drop?
+function isJunkSegment(seg) {
+  if (!seg) return true;
+  // Purely numeric — any length is suspect (page IDs, item numbers, etc.)
+  if (/^\d+$/.test(seg)) return true;
+  // Hex-only and at least 10 chars (UUIDs, commit hashes, etc.)
+  if (/^[a-f0-9]{10,}$/i.test(seg)) return true;
+  // Mixed alphanumeric and at least 8 chars (encoded IDs)
+  if (seg.length >= 8 && /\d/.test(seg) && /[a-zA-Z]/.test(seg)) return true;
+  // Generic filler word
+  if (URL_FILLER_SEGMENTS.has(seg.toLowerCase())) return true;
+  return false;
+}
+
+// Generic URL label: domain + meaningful path segments.
+// Walks the path from left to right, keeping segments that look like real words.
+// Short prefix segments (1-2 chars) are glued to their following segment if useful,
+// so things like Reddit's "r/programming" or LinkedIn's "in/john-doe" survive.
+function smartLabel(u) {
+  const host = u.host.replace(/^www\./i, '').toLowerCase();
+  const parts = u.pathname.split('/').filter(Boolean);
+  if (parts.length === 0) return host;
+
+  const kept = [];
+  let i = 0;
+  while (i < parts.length && kept.length < 2) {
+    const p = parts[i];
+    // Short prefix segment (1-2 chars) — only useful if followed by a meaningful next.
+    // Glue them as "x/y" so things like "r/programming", "in/john-doe" survive.
+    if (p.length <= 2) {
+      const next = parts[i + 1];
+      if (next && !isJunkSegment(next)) {
+        kept.push(`${p}/${next}`);
+        i += 2;
+        continue;
+      } else {
+        // Short prefix with no useful neighbor — drop it and stop here
+        break;
+      }
+    }
+    if (isJunkSegment(p)) break;
+    kept.push(p);
+    i++;
+  }
+
+  if (kept.length === 0) return host;
+  return `${host} · ${kept.join(' · ')}`;
+}
+
 function parseUrl(raw) {
   let s = raw.trim();
   if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
@@ -4058,11 +4148,9 @@ function parseUrl(raw) {
   const cleanQuery = cleanParams.toString();
   // Reconstruct a clean full URL (this is what we open when clicked)
   const cleanUrl = u.origin + u.pathname + (cleanQuery ? '?' + cleanQuery : '') + u.hash;
-  // Display label — domain + path, no protocol, no query, with leading "www." stripped
-  let host = u.host.replace(/^www\./, '');
-  let path = u.pathname.replace(/\/+$/, ''); // trim trailing slash
-  let label = host + path;
-  // Cap visual length
+  // Generate a smart, glance-readable label
+  let label = smartLabel(u);
+  // Cap visual length as a final safety
   if (label.length > 60) label = label.slice(0, 57) + '…';
   return { fullUrl: cleanUrl, displayLabel: label };
 }
@@ -4684,6 +4772,14 @@ function renderTask(t) {
       openTaskDetail(t.id);
     });
   }
+
+  // After the card lands in the DOM, check if its content overflows the max-height.
+  // If so, add .is-clipped so the fade gradient hints at hidden content.
+  requestAnimationFrame(() => {
+    if (el.scrollHeight > el.clientHeight + 1) {
+      el.classList.add('is-clipped');
+    }
+  });
 
   return el;
 }
