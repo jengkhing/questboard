@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v36</title>
+<title>Kanban Quest — v60</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -59,22 +59,116 @@
     opacity: 0.5;
   }
 
+  /* ============ SCROLLBARS ============ */
+  /* Firefox */
+  html { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  .column-body { scrollbar-width: thin; scrollbar-color: var(--line-soft) transparent; }
+
+  /* WebKit / Blink — main page */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background 0.2s;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); background-clip: padding-box; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+
+  /* Column scrollbars — even more subtle, fade in on column hover */
+  .column-body::-webkit-scrollbar { width: 6px; }
+  .column-body::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+    transition: background 0.25s;
+  }
+  .column:hover .column-body::-webkit-scrollbar-thumb { background: var(--line-soft); background-clip: padding-box; }
+  .column-body:hover::-webkit-scrollbar-thumb { background: var(--line); background-clip: padding-box; }
+
+  /* ============ PAN MODE (hold Space to drag-scroll) ============ */
+  body.pan-mode,
+  body.pan-mode * {
+    cursor: grab !important;
+    user-select: none !important;
+  }
+  body.pan-mode.pan-dragging,
+  body.pan-mode.pan-dragging * {
+    cursor: grabbing !important;
+  }
+  /* During pan mode, suppress draggable cards so they don't fight pan gestures */
+  body.pan-mode .task { pointer-events: none; }
+  body.pan-mode .column-body { pointer-events: auto; }
+
   .app {
     position: relative;
     z-index: 2;
     max-width: 1400px;
     margin: 0 auto;
-    padding: 40px 48px 80px;
+    padding: 24px 48px 12px 88px; /* extra left for the vertical rail */
   }
 
-  /* HEADER */
+  /* Vertical view-nav rail — small "Stats" and "Journal" labels stacked
+     vertically in the left gutter. Text reads normally, right-aligned. */
+  .brand-rail {
+    position: absolute;
+    top: 280px;
+    left: 0;
+    /* Wider so labels have room and right-edge sits cleanly against the kanban */
+    width: 76px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    padding-right: 12px;
+    z-index: 3;
+    user-select: none;
+  }
+  .view-nav-item {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: color 0.25s, letter-spacing 0.25s;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .view-nav-item:hover {
+    color: var(--ink-dim);
+  }
+  .view-nav-item.active {
+    color: var(--accent);
+    letter-spacing: 0.32em;
+  }
+  /* Small diamond appears to the left of the label when active */
+  .view-nav-item::before {
+    content: '◇';
+    font-size: 8px;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .view-nav-item.active::before {
+    opacity: 1;
+  }
+
+  /* HEADER — brand on the left, level on the right */
   header {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-bottom: 40px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--line-soft);
+    margin-bottom: 16px;
+    padding-bottom: 0;
+    border-bottom: none;
   }
   .brand { display: flex; flex-direction: column; }
   .brand .eyebrow {
@@ -118,7 +212,7 @@
   .level-block .value.bump { transform: scale(1.18); color: var(--accent); }
 
   /* XP BAR */
-  .xp-bar-wrap { margin-bottom: 40px; }
+  .xp-bar-wrap { margin-bottom: 24px; }
   .xp-bar-meta {
     display: flex;
     justify-content: space-between;
@@ -209,7 +303,7 @@
   /* BOARD */
   .board {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 24px;
   }
   .column {
@@ -255,6 +349,72 @@
     gap: 10px;
     overflow-y: auto;
     max-height: 600px;
+    position: relative;
+  }
+
+  /* Fade overlays to show "more above" / "more below" — only active when scrollable */
+  .column { position: relative; }
+  .column::before {
+    content: '';
+    position: absolute;
+    left: 1px;
+    right: 1px;
+    height: 28px;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    top: 60px;
+    background: linear-gradient(to bottom, var(--bg-soft) 0%, rgba(22, 22, 26, 0) 100%);
+  }
+  .column::after {
+    content: '';
+    position: absolute;
+    left: 1px;
+    right: 1px;
+    height: 28px;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg-soft) 0%, rgba(22, 22, 26, 0) 100%);
+  }
+  .column.has-overflow-top::before { opacity: 1; }
+  .column.has-overflow-bottom::after { opacity: 1; }
+
+  /* Clickable scroll affordance — a small chevron at the bottom of overflowing columns */
+  .column-scroll-down {
+    position: absolute;
+    left: 50%;
+    bottom: 4px;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 18px;
+    z-index: 6;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.25s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-faint);
+    pointer-events: none;
+  }
+  .column.has-overflow-bottom .column-scroll-down {
+    opacity: 0.7;
+    pointer-events: auto;
+  }
+  .column-scroll-down:hover {
+    opacity: 1 !important;
+    color: var(--accent);
+    transform: translateX(-50%) translateY(-2px);
+  }
+  .column-scroll-down::before {
+    content: '⌄';
+    font-size: 16px;
+    line-height: 1;
+    font-family: var(--mono);
   }
 
   /* TASK */
@@ -488,6 +648,15 @@
     display: flex;
     gap: 8px;
     align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .add-row .add-input {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .add-row .type-select,
+  .add-row .pain-select {
+    flex: 1 1 auto;
   }
   .add-input {
     flex: 1;
@@ -565,14 +734,6 @@
     align-items: center;
     justify-content: center;
     min-width: 60px;
-  }
-  .type-select-label {
-    font-family: var(--mono);
-    font-size: 8px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    margin-bottom: 2px;
   }
   .type-toggle {
     display: flex;
@@ -947,16 +1108,30 @@
 
   /* FOOTER */
   footer {
-    margin-top: 48px;
-    padding-top: 24px;
-    border-top: 1px solid var(--line-soft);
+    margin-top: 20px;
+    padding-top: 0;
+    border-top: none;
     display: flex;
     justify-content: space-between;
+    align-items: center;
     font-family: var(--mono);
     font-size: 10px;
     color: var(--ink-faint);
     letter-spacing: 0.15em;
     text-transform: uppercase;
+  }
+  .footer-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .footer-version {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    opacity: 0.5;
   }
   footer .legend {
     display: flex;
@@ -1104,6 +1279,9 @@
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 10px;
     align-content: start;
+    /* Fill remaining vertical space so the input below sits at the bottom
+       even when there are few or no cards. */
+    flex: 1;
   }
   .backlog-empty {
     grid-column: 1 / -1;
@@ -1117,6 +1295,19 @@
 
   .backlog-add {
     margin: 16px 24px 8px;
+  }
+  /* Backlog has the full board width to play with — keep the add row inline,
+     no wrap. The input flexes to fill remaining space; selectors stay compact. */
+  .backlog-add .add-row {
+    flex-wrap: nowrap;
+  }
+  .backlog-add .add-row .add-input {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .backlog-add .add-row .type-select,
+  .backlog-add .add-row .pain-select {
+    flex: 0 0 auto;
   }
 
   /* ============ QUEST VIEW ============ */
@@ -1607,6 +1798,56 @@
     border-left: 1px solid var(--line-soft);
     border-right: 1px solid var(--line-soft);
   }
+  /* AM half — subtly cooler/darker. Spans 0%-50% of the strip width. */
+  .daystrip::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 50%;
+    background: linear-gradient(to right,
+      rgba(140, 160, 200, 0.04) 0%,
+      rgba(140, 160, 200, 0.02) 80%,
+      transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* PM half — subtly warmer */
+  .daystrip::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 50%;
+    background: linear-gradient(to right,
+      transparent 0%,
+      rgba(255, 179, 71, 0.02) 20%,
+      rgba(255, 179, 71, 0.05) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* Noon divider — thin vertical line marking the AM/PM split */
+  .daystrip-noon {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: var(--line);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .daystrip-noon::after {
+    content: '·';
+    position: absolute;
+    top: 3px;
+    left: -3px;
+    font-size: 14px;
+    line-height: 1;
+    color: var(--ink-faint);
+  }
 
   .daystrip-hours {
     position: absolute;
@@ -1740,8 +1981,77 @@
     z-index: 1;
   }
 
-  /* Push the app content down by the strip height so it doesn't slip under */
-  body { padding-top: var(--daystrip-h); }
+  /* Notes row — labels under each block with notes. Lives below the strip. */
+  :root { --daystrip-notes-h: 0px; }
+  body.has-daystrip-notes { --daystrip-notes-h: 22px; }
+
+  .daystrip-notes {
+    position: relative;
+    height: var(--daystrip-notes-h);
+    margin: 0 132px 0 84px;
+    pointer-events: none;
+    transition: height 0.2s;
+  }
+  .daystrip-note-label {
+    position: absolute;
+    top: 4px;
+    transform: translateX(-50%);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 11px;
+    line-height: 1;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+
+  /* Inline note editor — small popover anchored below the block */
+  .daystrip-note-editor {
+    position: absolute;
+    top: calc(var(--daystrip-h) + 4px);
+    z-index: 60;
+    background: var(--bg-card);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 8px 10px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 12px rgba(212, 255, 58, 0.15);
+    display: none;
+    min-width: 200px;
+    transform: translateX(-50%);
+  }
+  .daystrip-note-editor.show { display: block; }
+  .daystrip-note-editor input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--line);
+    padding: 4px 0;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 13px;
+  }
+  .daystrip-note-editor input:focus {
+    outline: none;
+    border-bottom-color: var(--accent);
+  }
+  .daystrip-note-editor input::placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+  .daystrip-note-editor .hint {
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+
+  /* Push the app content down by the strip height (+ notes height if any) */
+  body { padding-top: calc(var(--daystrip-h) + var(--daystrip-notes-h)); }
 
   @media (max-width: 900px) {
     :root { --daystrip-h: 44px; }
@@ -1755,6 +2065,112 @@
     .daystrip-block { top: 10px; bottom: 4px; }
   }
 
+
+  /* ============ STATS VIEW ============ */
+  .stats-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 16px 0 60px;
+  }
+  .stats-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .stats-eyebrow::before {
+    content: '◇';
+    font-size: 10px;
+    color: var(--accent);
+  }
+  .stats-title {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 36px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 40px;
+  }
+  .stats-title em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  /* Swipeable range — vertical carousel/drum with physics-flavored easing */
+  .stats-range {
+    display: inline-block;
+    vertical-align: baseline;
+    cursor: ns-resize;
+    color: var(--accent);
+    user-select: none;
+    /* Width is set in JS once we measure all the labels */
+    position: relative;
+  }
+  /* Subtle dotted underline hints at interactivity */
+  .stats-range::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 0;
+    border-bottom: 1px dotted rgba(212, 255, 58, 0.4);
+    transition: border-bottom-color 0.2s;
+  }
+  .stats-range:hover::after,
+  .stats-range.dragging::after {
+    border-bottom-color: var(--accent);
+  }
+  .stats-range.dragging {
+    color: var(--accent-warm);
+  }
+  /* Viewport — only one item is visible at a time */
+  .range-viewport {
+    display: inline-block;
+    overflow: hidden;
+    /* Use baseline alignment with a small negative shift to compensate.
+       For Fraunces serif at this size, the descender depth pushes the box's bottom
+       a few pixels below the baseline. -0.18em lifts the visible content up to sit
+       on the parent's baseline. Tuned to fit "The past" + rolling word at 36px. */
+    vertical-align: -0.18em;
+    height: 1em;
+    line-height: 1;
+    mask-image: linear-gradient(to bottom,
+      transparent 0%,
+      black 6%,
+      black 94%,
+      transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom,
+      transparent 0%,
+      black 6%,
+      black 94%,
+      transparent 100%);
+  }
+  /* Drum — vertical stack of items separated by gap, translateY shows the active one */
+  .range-drum {
+    display: flex;
+    flex-direction: column;
+    /* Spacing between items pushes neighbors well outside the viewport,
+       eliminating "previous label" bleed-through. */
+    gap: 0.5em;
+    will-change: transform;
+  }
+  .range-item {
+    height: 1em;
+    line-height: 1;
+    white-space: nowrap;
+    text-align: left;
+    flex-shrink: 0;
+  }
+  /* On the stats page, give velocity cells more breathing room */
+  .stats-velocity .vel-cell {
+    padding: 32px 28px;
+  }
 
   /* ============ JOURNAL VIEW ============ */
   .journal {
@@ -2373,6 +2789,7 @@
 
   @media (max-width: 900px) {
     .app { padding: 24px 16px 140px; }
+    .brand-rail { display: none; } /* no horizontal room on mobile */
     header { flex-direction: column; align-items: flex-start; gap: 24px; }
     .brand h1 { font-size: 32px; }
     .velocity { grid-template-columns: 1fr 1fr; }
@@ -2412,29 +2829,34 @@
 
     /* Footer */
     footer { flex-direction: column; gap: 16px; align-items: flex-start; }
-
-    /* Add-row needs to wrap on narrow screens */
-    .add-row { flex-wrap: wrap; }
-    .add-row .add-input { flex: 1 1 100%; }
-    .type-select, .pain-select { flex: 1; }
   }
 
 </style>
 </head>
 <body>
-<div class="daystrip-wrap" id="daystripWrap" title="Drag empty space to mark time away. Drag a block to move. × to remove.">
+<div class="daystrip-wrap" id="daystripWrap" title="Drag empty space to mark time away. Drag a block to move. × or right-click to remove. Click a block to add a note.">
   <span class="daystrip-eyebrow">Today</span>
   <span class="daystrip-budget" id="daystripBudget">free · <em>—</em></span>
   <div class="daystrip" id="daystrip">
     <div class="daystrip-hours" id="daystripHours"></div>
+    <div class="daystrip-noon"></div>
     <div class="daystrip-avail"></div>
     <div class="daystrip-now" id="daystripNow" style="display:none"></div>
   </div>
+  <div class="daystrip-notes" id="daystripNotes"></div>
+  <div class="daystrip-note-editor" id="daystripNoteEditor">
+    <input type="text" id="daystripNoteInput" placeholder="brief note (e.g. standup, gym)" maxlength="60">
+    <div class="hint">Enter to save · Esc to cancel</div>
+  </div>
 </div>
 <div class="app">
+  <div class="brand-rail">
+    <span class="view-nav-item" data-view-nav="stats" title="Stats — press S">Stats</span>
+    <span class="view-nav-item" data-view-nav="journal" title="Journal — press R">Journal</span>
+  </div>
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v36</span>
+      <span class="eyebrow">— Kanban / v60</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <div class="level-block">
@@ -2460,29 +2882,6 @@
     </button>
   </div>
 
-  <div class="velocity">
-    <div class="vel-cell vel-cell-quest">
-      <span class="vel-label">◆ Quests shipped · 7d</span>
-      <span class="vel-value" id="questsWeek">0</span>
-      <span class="vel-delta flat" id="questsDelta">— vs. prior week</span>
-    </div>
-    <div class="vel-cell">
-      <span class="vel-label">Tasks shipped · 7d</span>
-      <span class="vel-value" id="tasksWeek">0</span>
-      <span class="vel-delta flat" id="tasksDelta">— vs. prior week</span>
-    </div>
-    <div class="vel-cell">
-      <span class="vel-label">Pain consumed · 7d</span>
-      <span class="vel-value" id="painWeek">0<em>pts</em></span>
-      <span class="vel-delta flat" id="painDelta">— vs. prior week</span>
-    </div>
-    <div class="vel-cell">
-      <span class="vel-label">Avg pain / item · 7d</span>
-      <span class="vel-value" id="avgPain">—</span>
-      <span class="vel-delta flat" id="avgPainDelta">— vs. prior week</span>
-    </div>
-  </div>
-
   <div class="board" id="board" data-view-target="active">
     <div class="column" data-col="todo">
       <div class="column-header">
@@ -2494,7 +2893,6 @@
         <div class="add-row">
           <input class="add-input" data-add="todo" placeholder="+ new" maxlength="140">
           <div class="type-select">
-            <span class="type-select-label">Type</span>
             <div class="type-toggle" data-type-toggle="todo">
               <button class="type-toggle-btn active" data-type="task">task</button>
               <button class="type-toggle-btn" data-type="quest">quest</button>
@@ -2528,11 +2926,11 @@
       <span class="b-title">Backlog</span>
       <span class="b-sub">parked items — not counted in velocity</span>
     </div>
+    <div class="backlog-body" id="backlogBody"></div>
     <div class="add-task backlog-add">
       <div class="add-row">
         <input class="add-input" data-add="backlog" placeholder="+ new" maxlength="140">
         <div class="type-select">
-          <span class="type-select-label">Type</span>
           <div class="type-toggle" data-type-toggle="backlog">
             <button class="type-toggle-btn active" data-type="task">task</button>
             <button class="type-toggle-btn" data-type="quest">quest</button>
@@ -2544,7 +2942,6 @@
         </div>
       </div>
     </div>
-    <div class="backlog-body" id="backlogBody"></div>
   </div>
 
   <!-- Quest view — shown when a Quest is opened -->
@@ -2629,6 +3026,41 @@
     </div>
   </div>
 
+  <!-- Stats view — toggled with S -->
+  <div data-view-target="stats" style="display:none">
+    <div class="breadcrumb">
+      <button class="breadcrumb-back" id="statsBack">← Quest board</button>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Stats</span>
+    </div>
+    <div class="stats-page">
+      <div class="stats-eyebrow">Stats</div>
+      <h1 class="stats-title">The past&nbsp;<em class="stats-range" id="statsRange" title="Swipe / scroll up &darr; or click to change range"><span class="range-viewport"><span class="range-drum" id="statsRangeDrum"></span></span></em></h1>
+      <div class="velocity stats-velocity">
+        <div class="vel-cell vel-cell-quest">
+          <span class="vel-label">◆ Quests shipped · 7d</span>
+          <span class="vel-value" id="questsWeek">0</span>
+          <span class="vel-delta flat" id="questsDelta">— vs. prior week</span>
+        </div>
+        <div class="vel-cell">
+          <span class="vel-label">Tasks shipped · 7d</span>
+          <span class="vel-value" id="tasksWeek">0</span>
+          <span class="vel-delta flat" id="tasksDelta">— vs. prior week</span>
+        </div>
+        <div class="vel-cell">
+          <span class="vel-label">Pain consumed · 7d</span>
+          <span class="vel-value" id="painWeek">0<em>pts</em></span>
+          <span class="vel-delta flat" id="painDelta">— vs. prior week</span>
+        </div>
+        <div class="vel-cell">
+          <span class="vel-label">Avg pain / item · 7d</span>
+          <span class="vel-value" id="avgPain">—</span>
+          <span class="vel-delta flat" id="avgPainDelta">— vs. prior week</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <div class="legend">
       <span>Pain ·</span>
@@ -2639,7 +3071,10 @@
       <span class="legend-item" data-pain="5"><span class="legend-dot" style="background:var(--pain-5)"></span>5 brutal</span>
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
-    <button id="resetBtn">Reset everything</button>
+    <div class="footer-right">
+      <span class="footer-version">v60</span>
+      <button id="resetBtn">Reset everything</button>
+    </div>
   </footer>
 </div>
 
@@ -3028,7 +3463,7 @@ let pendingPain = { todo: 3, backlog: 3, 'quest-todo': 3 };
 let pendingType = { todo: 'task', backlog: 'task' };
 // UI-only: which tasks have their description in edit mode (not persisted)
 let editingDesc = new Set();
-// UI-only: current view ('active' | 'backlog' | 'quest' | 'journal')
+// UI-only: current view ('active' | 'backlog' | 'quest' | 'journal' | 'stats')
 let currentView = 'active';
 // UI-only: remembers which view to return to when journal closes
 let previousView = 'active';
@@ -3082,6 +3517,12 @@ async function load() {
         dayStripBlocks = [];
         dayStripKey = currentDayKey();
       }
+      // Stats range preference
+      if (typeof parsed.statsRangeIdx === 'number' &&
+          parsed.statsRangeIdx >= 0 &&
+          parsed.statsRangeIdx < STATS_RANGES.length) {
+        statsRangeIdx = parsed.statsRangeIdx;
+      }
     } else {
       dayStripKey = currentDayKey();
     }
@@ -3096,16 +3537,26 @@ async function load() {
 }
 async function save() {
   try {
-    const payload = { ...state, dayStripBlocks, dayStripKey };
+    const payload = { ...state, dayStripBlocks, dayStripKey, statsRangeIdx };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch (e) { /* quota exceeded or disabled — ignore */ }
 }
 
 // ============ VELOCITY ============
-function computeVelocity() {
+// Time-range options for the Stats page. Days each window covers.
+const STATS_RANGES = [
+  { key: '24h',     days: 1,    label: '24h',     prose: '24 hours.',  cellLabel: '24h' },
+  { key: '7d',      days: 7,    label: '7d',      prose: 'seven days.', cellLabel: '7d' },
+  { key: '1m',      days: 30,   label: '30d',     prose: 'month.',     cellLabel: '30d' },
+  { key: 'quarter', days: 91,   label: 'quarter', prose: 'quarter.',   cellLabel: '91d' },
+];
+let statsRangeIdx = 1; // default: 7d
+
+function computeVelocity(rangeDays) {
   const t = nowMs();
-  const weekStart = t - 7 * DAY;
-  const priorStart = t - 14 * DAY;
+  const windowMs = rangeDays * DAY;
+  const periodStart = t - windowMs;
+  const priorStart  = t - 2 * windowMs;
 
   let painThis = 0, tasksThis = 0, questsThis = 0;
   let painPrior = 0, tasksPrior = 0, questsPrior = 0;
@@ -3115,7 +3566,7 @@ function computeVelocity() {
     if (task.backlog) return; // backlog items are excluded from velocity
     const c = task.completedAt;
     const isQuest = task.type === 'quest';
-    if (c >= weekStart) {
+    if (c >= periodStart) {
       painThis += task.pain || 0;
       tasksThis += 1;
       if (isQuest) questsThis += 1;
@@ -3136,11 +3587,11 @@ function fmtDelta(cur, prev) {
   if (prev === 0 && cur === 0) return { text: '— no prior data', cls: 'flat' };
   if (prev === 0) return { text: `↑ new ground`, cls: 'up' };
   const diff = cur - prev;
-  if (Math.abs(diff) < 0.01) return { text: `→ flat vs. prior week`, cls: 'flat' };
+  if (Math.abs(diff) < 0.01) return { text: `→ flat vs. prior period`, cls: 'flat' };
   const pct = Math.round((diff / prev) * 100);
   const arrow = diff > 0 ? '↑' : '↓';
   const cls = diff > 0 ? 'up' : 'down';
-  return { text: `${arrow} ${Math.abs(pct)}% vs. prior week`, cls };
+  return { text: `${arrow} ${Math.abs(pct)}% vs. prior period`, cls };
 }
 
 // ============ RENDER ============
@@ -3152,7 +3603,9 @@ function render() {
   document.getElementById('xpLabel').textContent = `XP — ${state.xp} / ${need}`;
   document.getElementById('nextLabel').textContent = `Next: Level ${state.level + 1}`;
 
-  const v = computeVelocity();
+  // Velocity — use the current stats range
+  const range = STATS_RANGES[statsRangeIdx];
+  const v = computeVelocity(range.days);
   document.getElementById('questsWeek').textContent = v.questsThis;
   document.getElementById('painWeek').innerHTML = `${v.painThis}<em>pts</em>`;
   document.getElementById('tasksWeek').textContent = v.tasksThis;
@@ -3163,8 +3616,24 @@ function render() {
   applyDelta('tasksDelta', fmtDelta(v.tasksThis, v.tasksPrior));
   applyDelta('avgPainDelta', fmtDelta(v.avgThis, v.avgPrior));
 
-  // Cat mood — driven by 7d pain consumed
-  updateCatMood(v.painThis);
+  // Update cell labels to reflect the active range (e.g. "· 24h", "· 30d", "· 91d")
+  const cellLabel = range.cellLabel;
+  document.querySelectorAll('.stats-velocity .vel-label').forEach((el, i) => {
+    const labels = [
+      `◆ Quests shipped · ${cellLabel}`,
+      `Tasks shipped · ${cellLabel}`,
+      `Pain consumed · ${cellLabel}`,
+      `Avg pain / item · ${cellLabel}`,
+    ];
+    el.textContent = labels[i] || el.textContent;
+  });
+
+  // Sync the stats range drum (only repositions if it's out of sync, e.g. after reset)
+  if (typeof window.__syncStatsDrum === 'function') window.__syncStatsDrum();
+
+  // Cat mood — always uses 7d window since the mood meaning is anchored to a weekly cadence
+  const sevenDayV = range.days === 7 ? v : computeVelocity(7);
+  updateCatMood(sevenDayV.painThis);
 
   // Columns — main board only shows TOP-LEVEL items (no questId, not backlog)
   ['todo','doing','done'].forEach(col => {
@@ -3211,7 +3680,7 @@ function render() {
 
   // Hide view-toggle while inside a Quest or Journal
   const viewToggle = document.getElementById('viewToggle');
-  if (viewToggle) viewToggle.style.display = (currentView === 'quest' || currentView === 'journal') ? 'none' : 'inline-flex';
+  if (viewToggle) viewToggle.style.display = (currentView === 'quest' || currentView === 'journal' || currentView === 'stats') ? 'none' : 'inline-flex';
 
   // Toggle body class for ambient Quest background
   document.body.classList.toggle('in-quest', currentView === 'quest');
@@ -3231,10 +3700,20 @@ function render() {
   const legendClear = document.getElementById('legendClear');
   if (legendClear) legendClear.classList.toggle('show', activePainFilter !== null);
 
+  // View nav (vertical rail) sync — highlight active overlay view
+  document.querySelectorAll('.view-nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.viewNav === currentView);
+  });
+
   renderPainSelects();
 
   // Day strip — only meaningful when active view is visible
   if (typeof renderDayStrip === 'function') renderDayStrip();
+  // Update column scroll-fade indicators after layout settles
+  if (typeof updateColumnFades === 'function') {
+    // requestAnimationFrame so the DOM has applied the new card layout
+    requestAnimationFrame(updateColumnFades);
+  }
 }
 
 function applyDelta(id, d) {
@@ -3283,9 +3762,10 @@ function renderTask(t) {
       openQuest(t.id);
     });
 
-    // Quest card as a drop target — absorb a dropped task into this Quest
+    // Quest card as a drop target — absorb a dropped task into this Quest.
+    // Done Quests are NOT valid absorb targets — they're finished, don't keep accumulating.
     el.addEventListener('dragover', (e) => {
-      // Only highlight if the dragged thing isn't this same Quest
+      if (t.col === 'done') return; // closed Quest, no new tasks
       const draggedId = currentDraggedTaskId;
       if (!draggedId || draggedId === t.id) return;
       const dragged = state.tasks.find(x => x.id === draggedId);
@@ -3299,6 +3779,7 @@ function renderTask(t) {
       if (!el.contains(e.relatedTarget)) el.classList.remove('absorb-target');
     });
     el.addEventListener('drop', (e) => {
+      if (t.col === 'done') return; // closed Quest, ignore drop — bubbles to column instead
       const draggedId = e.dataTransfer.getData('text/plain');
       if (!draggedId || draggedId === t.id) return;
       const dragged = state.tasks.find(x => x.id === draggedId);
@@ -3667,7 +4148,6 @@ document.querySelectorAll('.column').forEach(col => {
     } else {
       if (wasDone && newCol !== 'done') task.completedAt = null;
       save(); render();
-      // Auto-enter focus mode if a regular task just entered Doing
       if (becomingDoing && task.type !== 'quest') {
         enterFocus(task.id);
       }
@@ -4353,6 +4833,10 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && currentView === 'journal' && !isEditableFocused()) {
     exitJournal();
   }
+  // Escape closes Stats too
+  if (e.key === 'Escape' && currentView === 'stats' && !isEditableFocused()) {
+    exitStats();
+  }
 });
 
 // Mark done from focus mode
@@ -4382,6 +4866,249 @@ function exitJournal() {
   currentView = (previousView === 'backlog') ? 'backlog' : 'active';
   render();
 }
+
+// ---- Stats ----
+function openStats() {
+  if (currentView !== 'stats') previousView = currentView;
+  currentView = 'stats';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  render();
+}
+function exitStats() {
+  currentView = (previousView === 'backlog') ? 'backlog' : 'active';
+  render();
+}
+
+// ---- Stats range selector — physics-driven vertical carousel ----
+// Visual model: the range word is a drum showing one face at a time.
+// Drag/wheel rotates the drum, with continuous tracking during gesture and
+// momentum-based settling on release.
+(function setupStatsRangeSelector() {
+  const rangeEl = document.getElementById('statsRange');
+  const drumEl = document.getElementById('statsRangeDrum');
+  if (!rangeEl || !drumEl) return;
+
+  // To make the drum feel infinite, render N copies of each item.
+  // With 4 ranges, 3 copies → 12 items. The "virtual" index can grow/shrink
+  // freely; we render modulo-cycle so it always looks continuous.
+  const REPETITIONS = 3;
+  const STEP_PX = 20;
+  const ITEM_COUNT = STATS_RANGES.length;
+  const TOTAL_ITEMS = ITEM_COUNT * REPETITIONS;
+
+  // Build the drum once
+  function buildDrum() {
+    drumEl.innerHTML = '';
+    for (let i = 0; i < TOTAL_ITEMS; i++) {
+      const r = STATS_RANGES[i % ITEM_COUNT];
+      const item = document.createElement('span');
+      item.className = 'range-item';
+      item.textContent = r.prose;
+      drumEl.appendChild(item);
+    }
+  }
+  buildDrum();
+
+  // Measure widest item to lock the viewport width — avoids layout shift as items roll by
+  function lockViewportWidth() {
+    const viewport = rangeEl.querySelector('.range-viewport');
+    let maxW = 0;
+    drumEl.querySelectorAll('.range-item').forEach(el => {
+      const w = el.getBoundingClientRect().width;
+      if (w > maxW) maxW = w;
+    });
+    if (maxW > 0) viewport.style.width = Math.ceil(maxW + 4) + 'px';
+  }
+
+  // virtualIdx is the unconstrained position; we display virtualIdx % ITEM_COUNT.
+  // Start centered in the middle repetition so we have room to scroll in both directions.
+  let virtualIdx = Math.floor(REPETITIONS / 2) * ITEM_COUNT + statsRangeIdx;
+  let itemH = 0; // measured once; refreshed if needed
+  let dragStartY = null;
+  let dragStartVirtualIdx = 0;
+  let dragLastTimestamp = 0;
+  let dragLastY = 0;
+  let dragVelocity = 0; // px/ms at the moment of release
+  let isAnimating = false;
+  let didDrag = false;
+
+  function measureItemH() {
+    const items = drumEl.querySelectorAll('.range-item');
+    if (items.length < 2) {
+      // Fallback: measure single item if only one rendered
+      const first = items[0];
+      if (first) itemH = first.getBoundingClientRect().height;
+      return;
+    }
+    // Measure the stride between consecutive items — includes any gap/margin between them.
+    const r1 = items[0].getBoundingClientRect();
+    const r2 = items[1].getBoundingClientRect();
+    itemH = r2.top - r1.top;
+  }
+
+  function setDrumOffset(offsetPx, withTransition, easing) {
+    if (withTransition) {
+      drumEl.style.transition = `transform 0.42s ${easing || 'cubic-bezier(0.22, 1, 0.36, 1)'}`;
+    } else {
+      drumEl.style.transition = 'none';
+    }
+    drumEl.style.transform = `translateY(${offsetPx}px)`;
+  }
+
+  // Render at the current virtualIdx (no transition during drag, transition on snap)
+  function renderDrum(withTransition, easing) {
+    if (!itemH) measureItemH();
+    if (!itemH) return; // not measured yet (font not ready)
+    setDrumOffset(-virtualIdx * itemH, withTransition, easing);
+  }
+
+  // After a transition completes, normalize virtualIdx back into the middle repetition.
+  // This is the "infinite carousel" trick — invisibly jump to the equivalent position.
+  function normalize() {
+    const middle = Math.floor(REPETITIONS / 2) * ITEM_COUNT;
+    const realIdx = ((virtualIdx % ITEM_COUNT) + ITEM_COUNT) % ITEM_COUNT;
+    if (statsRangeIdx !== realIdx) {
+      statsRangeIdx = realIdx;
+      save();
+      render(); // updates the velocity cells too
+    }
+    // Snap virtualIdx back to the middle repetition (without transition, invisible)
+    const target = middle + realIdx;
+    if (virtualIdx !== target) {
+      virtualIdx = target;
+      setDrumOffset(-virtualIdx * itemH, false);
+    }
+  }
+
+  function snapToNearest(extraVelocity) {
+    // extraVelocity in px/ms — gives "throw" feel on fast flicks
+    let target = Math.round(virtualIdx);
+    if (extraVelocity && Math.abs(extraVelocity) > 0.3) {
+      // Each px/ms of release velocity adds ~1.5 items of carry
+      const carry = Math.sign(extraVelocity) * Math.min(3, Math.abs(extraVelocity) * 1.5);
+      target = Math.round(virtualIdx - carry);
+    }
+    virtualIdx = target;
+    // Physics-flavored easing — slight overshoot then settle
+    isAnimating = true;
+    renderDrum(true, 'cubic-bezier(0.34, 1.4, 0.64, 1)');
+    setTimeout(() => {
+      isAnimating = false;
+      normalize();
+    }, 440);
+  }
+
+  function advance(delta) {
+    virtualIdx += delta;
+    snapToNearest(0);
+  }
+
+  // Click — advance one step forward (only if no drag happened)
+  rangeEl.addEventListener('click', (e) => {
+    if (didDrag) { didDrag = false; return; }
+    advance(1);
+  });
+
+  // --- Pointer events (works for mouse + touch) ---
+  rangeEl.addEventListener('mousedown', startDrag);
+  rangeEl.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    startDrag({ clientY: e.touches[0].clientY, preventDefault: () => {}, button: 0 });
+  }, { passive: true });
+
+  function startDrag(e) {
+    if (e.button !== undefined && e.button !== 0) return;
+    if (isAnimating) return;
+    dragStartY = e.clientY;
+    dragStartVirtualIdx = virtualIdx;
+    dragLastTimestamp = performance.now();
+    dragLastY = e.clientY;
+    dragVelocity = 0;
+    didDrag = false;
+    rangeEl.classList.add('dragging');
+    if (e.preventDefault) e.preventDefault();
+  }
+
+  function onDragMove(clientY) {
+    if (dragStartY === null) return;
+    const dy = clientY - dragStartY;
+    // Track velocity for momentum
+    const now = performance.now();
+    const dt = now - dragLastTimestamp;
+    if (dt > 0) {
+      const instantV = (clientY - dragLastY) / dt;
+      // Exponential smoothing so brief jitters don't dominate
+      dragVelocity = dragVelocity * 0.7 + instantV * 0.3;
+    }
+    dragLastTimestamp = now;
+    dragLastY = clientY;
+
+    // Convert px-delta to drum position delta. Swipe-up (negative dy) → advance forward.
+    const deltaIdx = -dy / itemH;
+    virtualIdx = dragStartVirtualIdx + deltaIdx;
+    if (Math.abs(dy) > 3) didDrag = true;
+    renderDrum(false);
+  }
+
+  function endDrag() {
+    if (dragStartY === null) return;
+    rangeEl.classList.remove('dragging');
+    dragStartY = null;
+    // Flip velocity sign because swipe up = forward
+    snapToNearest(-dragVelocity);
+  }
+
+  document.addEventListener('mousemove', (e) => onDragMove(e.clientY));
+  document.addEventListener('mouseup', endDrag);
+  document.addEventListener('touchmove', (e) => {
+    if (dragStartY !== null && e.touches.length === 1) {
+      onDragMove(e.touches[0].clientY);
+    }
+  }, { passive: true });
+  document.addEventListener('touchend', endDrag);
+  document.addEventListener('touchcancel', endDrag);
+
+  // --- Mouse wheel — each tick = one step ---
+  let wheelAccum = 0;
+  rangeEl.addEventListener('wheel', (e) => {
+    if (currentView !== 'stats') return;
+    e.preventDefault();
+    wheelAccum += e.deltaY;
+    if (Math.abs(wheelAccum) > 30) {
+      const dir = wheelAccum > 0 ? -1 : 1; // scroll up → forward
+      advance(dir);
+      wheelAccum = 0;
+    }
+  }, { passive: false });
+
+  // --- Init / lifecycle ---
+  // Render once on load; also re-render whenever the stats page opens since fonts/layout may shift
+  function initialize() {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        lockViewportWidth();
+        measureItemH();
+        renderDrum(false);
+      });
+    } else {
+      lockViewportWidth();
+      measureItemH();
+      renderDrum(false);
+    }
+  }
+  initialize();
+
+  // Expose a hook so render() can sync the drum if statsRangeIdx changes elsewhere (e.g. reset)
+  window.__syncStatsDrum = () => {
+    if (isAnimating) return;
+    const middle = Math.floor(REPETITIONS / 2) * ITEM_COUNT;
+    const target = middle + statsRangeIdx;
+    if (virtualIdx !== target) {
+      virtualIdx = target;
+      renderDrum(false);
+    }
+  };
+})();
 
 // Build a stable day label from a timestamp.
 // Today / Yesterday / weekday name (this week) / formal date.
@@ -4498,6 +5225,7 @@ function renderJournal() {
 
 // Journal back button
 document.getElementById('journalBack').addEventListener('click', exitJournal);
+document.getElementById('statsBack').addEventListener('click', exitStats);
 
 
 // Tab — toggle between Active and Backlog (only when no input is focused)
@@ -4559,8 +5287,8 @@ document.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
 
   if (e.key === 'Tab') {
-    // Only toggle on the main app views; skip if inside a Quest or Journal
-    if (currentView === 'quest' || currentView === 'journal') return;
+    // Only toggle on the main app views; skip if inside a Quest, Journal, or Stats
+    if (currentView === 'quest' || currentView === 'journal' || currentView === 'stats') return;
     e.preventDefault();
     currentView = (currentView === 'active') ? 'backlog' : 'active';
     render();
@@ -4587,9 +5315,20 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  // S — toggle Stats. Same context-aware toggle pattern as R.
+  if (e.key === 's' || e.key === 'S') {
+    e.preventDefault();
+    if (currentView === 'stats') {
+      exitStats();
+    } else {
+      openStats();
+    }
+    return;
+  }
+
   // T — new task
   if (e.key === 't' || e.key === 'T') {
-    if (currentView === 'journal') return; // can't add from journal
+    if (currentView === 'journal' || currentView === 'stats') return; // can't add from these
     e.preventDefault();
     focusAddInput('task');
     return;
@@ -4597,7 +5336,7 @@ document.addEventListener('keydown', (e) => {
 
   // Q — new quest (blocked in Quest view since no nested Quests)
   if (e.key === 'q' || e.key === 'Q') {
-    if (currentView === 'quest' || currentView === 'journal') return; // silent no-op
+    if (currentView === 'quest' || currentView === 'journal' || currentView === 'stats') return;
     e.preventDefault();
     focusAddInput('quest');
     return;
@@ -4642,6 +5381,9 @@ document.addEventListener('contextmenu', (e) => {
   } else if (currentView === 'journal') {
     flashEl = document.getElementById('journalBack');
     exitJournal();
+  } else if (currentView === 'stats') {
+    flashEl = document.getElementById('statsBack');
+    exitStats();
   }
 
   // Flash the destination control briefly so the user sees what happened
@@ -4653,6 +5395,142 @@ document.addEventListener('contextmenu', (e) => {
   }
 });
 
+// ============ PAN MODE (hold Space to drag-scroll) ============
+// Hold Space → cursor becomes grab. Click-drag to pan whatever is under the cursor.
+// If the drag starts inside a .column-body, that column scrolls; otherwise the window scrolls.
+// Direction: natural (drag down moves content down; pulls earlier content into view).
+let panSpaceHeld = false;
+let panDrag = null; // { target: HTMLElement | window, startX, startY, startScrollLeft, startScrollTop }
+
+function panIsAllowed() {
+  // Disabled in focus mode and while user is typing
+  if (focusTaskId) return false;
+  if (isEditableFocused()) return false;
+  return true;
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space' && e.key !== ' ') return;
+  if (!panIsAllowed()) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  // CRITICAL: preventDefault on every Space press (including repeats) so the browser
+  // doesn't page-scroll. Browsers fire repeated keydown events while a key is held —
+  // returning early on e.repeat would let the default scroll-down fire on every repeat.
+  e.preventDefault();
+  if (e.repeat) return;
+  panSpaceHeld = true;
+  document.body.classList.add('pan-mode');
+});
+
+document.addEventListener('keyup', (e) => {
+  if (e.code !== 'Space' && e.key !== ' ') return;
+  panSpaceHeld = false;
+  document.body.classList.remove('pan-mode', 'pan-dragging');
+  // If a pan-drag is in flight, end it (mouse may still be down)
+  panDrag = null;
+});
+
+// Window blur — if user tabs away with Space held, cancel pan mode so they don't return to weird state
+window.addEventListener('blur', () => {
+  panSpaceHeld = false;
+  document.body.classList.remove('pan-mode', 'pan-dragging');
+  panDrag = null;
+});
+
+document.addEventListener('mousedown', (e) => {
+  if (!panSpaceHeld) return;
+  if (e.button !== 0) return;
+  // Determine scroll target: nearest scrollable ancestor of the click point
+  let target = e.target.closest('.column-body');
+  if (!target) target = window; // page scroll fallback
+  panDrag = {
+    target,
+    startX: e.clientX,
+    startY: e.clientY,
+    startScrollLeft: target === window ? window.scrollX : target.scrollLeft,
+    startScrollTop:  target === window ? window.scrollY : target.scrollTop,
+  };
+  document.body.classList.add('pan-dragging');
+  e.preventDefault();
+  e.stopPropagation(); // don't let it engage daystrip/task drag handlers
+}, true); // capture phase so we win over other mousedown handlers
+
+document.addEventListener('mousemove', (e) => {
+  if (!panDrag) return;
+  const dx = e.clientX - panDrag.startX;
+  const dy = e.clientY - panDrag.startY;
+  // Natural direction: drag right → content moves right → scrollLeft decreases
+  const newLeft = panDrag.startScrollLeft - dx;
+  const newTop  = panDrag.startScrollTop  - dy;
+  if (panDrag.target === window) {
+    window.scrollTo(newLeft, newTop);
+  } else {
+    panDrag.target.scrollLeft = newLeft;
+    panDrag.target.scrollTop  = newTop;
+  }
+  e.preventDefault();
+}, true);
+
+document.addEventListener('mouseup', (e) => {
+  if (!panDrag) return;
+  panDrag = null;
+  document.body.classList.remove('pan-dragging');
+  // Keep pan-mode class if Space is still held
+  if (!panSpaceHeld) document.body.classList.remove('pan-mode');
+  e.preventDefault();
+  e.stopPropagation();
+}, true);
+
+
+// Detect when a column body has more content above or below the visible area;
+// toggle .has-overflow-top / .has-overflow-bottom on the column for the CSS fade overlays.
+// Also injects a clickable chevron at the bottom of each column for tap-to-scroll.
+function ensureScrollAffordance(col) {
+  if (col.querySelector('.column-scroll-down')) return;
+  const body = col.querySelector('.column-body');
+  if (!body) return;
+  const chevron = document.createElement('div');
+  chevron.className = 'column-scroll-down';
+  chevron.title = 'Scroll down for more';
+  chevron.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    // Smooth-scroll the column body down by ~80% of its visible height
+    body.scrollBy({ top: body.clientHeight * 0.8, behavior: 'smooth' });
+  });
+  col.appendChild(chevron);
+}
+
+function updateColumnFades() {
+  document.querySelectorAll('.column').forEach(col => {
+    ensureScrollAffordance(col);
+    const body = col.querySelector('.column-body');
+    if (!body) return;
+    const overflowing = body.scrollHeight > body.clientHeight + 1;
+    if (!overflowing) {
+      col.classList.remove('has-overflow-top', 'has-overflow-bottom');
+      return;
+    }
+    const atTop = body.scrollTop <= 1;
+    const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 1;
+    col.classList.toggle('has-overflow-top', !atTop);
+    col.classList.toggle('has-overflow-bottom', !atBottom);
+  });
+}
+
+// Bind scroll listeners once. Use event delegation on the document with scroll capture
+// since scroll events don't bubble through normal phase.
+document.addEventListener('scroll', (e) => {
+  if (e.target && e.target.classList && e.target.classList.contains('column-body')) {
+    updateColumnFades();
+  }
+}, true);
+
+// Re-check fades on window resize (column heights can change)
+window.addEventListener('resize', () => {
+  if (typeof updateColumnFades === 'function') updateColumnFades();
+});
+
 // ============ DAY STRIP ============
 // Blocks are stored as { start, end } in minutes from 00:00 (range 0-1440).
 // We snap to 15-min increments.
@@ -4661,9 +5539,24 @@ const MIN_BLOCK_MIN = 15;
 const DAY_MINUTES = 1440;
 
 function formatHM(min) {
+  const h24 = Math.floor(min / 60);
+  const m = min % 60;
+  const suffix = h24 < 12 ? 'a' : 'p';
+  // 12-hour: 0 → 12, 1-11 → 1-11, 12 → 12, 13-23 → 1-11
+  let h12 = h24 % 12;
+  if (h12 === 0) h12 = 12;
+  // Compact format: omit ":00" minutes for round hours so the label stays short
+  if (m === 0) return `${h12}${suffix}`;
+  return `${h12}:${String(m).padStart(2,'0')}${suffix}`;
+}
+
+// Compact duration label: "30m", "1h", "1h 30m", "2h 15m"
+function formatDuration(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
 
 function snap(min) {
@@ -4716,14 +5609,20 @@ function renderDayStrip() {
   const strip = document.getElementById('daystrip');
   if (!strip) return;
 
-  // Hour ticks
+  // Hour ticks (12-hour labels: 12 → 3 → 6 → 9 → 12 → 3 → 6 → 9, every 3 hours)
   const hoursEl = document.getElementById('daystripHours');
   hoursEl.innerHTML = '';
   for (let h = 0; h <= 24; h++) {
     const tick = document.createElement('div');
     tick.className = 'daystrip-hour' + ((h % 6 === 0) ? ' major' : '');
     tick.style.left = ((h / 24) * 100) + '%';
-    tick.dataset.label = (h % 3 === 0 && h < 24) ? String(h).padStart(2,'0') : '';
+    // Show a label every 3 hours, in 12-hour format. Skip the trailing 24.
+    let label = '';
+    if (h % 3 === 0 && h < 24) {
+      const twelveHr = h % 12 === 0 ? 12 : h % 12;
+      label = String(twelveHr);
+    }
+    tick.dataset.label = label;
     hoursEl.appendChild(tick);
   }
 
@@ -4740,9 +5639,18 @@ function renderDayStrip() {
     el.style.width = widthPct + '%';
     el.dataset.idx = idx;
 
+    // Right-click instantly deletes this block (skipping the × button entirely)
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // prevent the global back-nav contextmenu handler
+      dayStripBlocks.splice(idx, 1);
+      save();
+      renderDayStrip();
+    });
+
     const label = document.createElement('span');
     label.className = 'daystrip-block-label';
-    label.textContent = `${formatHM(block.start)}–${formatHM(block.end)}`;
+    label.textContent = formatHM(block.start);
     el.appendChild(label);
 
     const del = document.createElement('button');
@@ -4788,6 +5696,23 @@ function renderDayStrip() {
   }
 
   document.getElementById('daystripBudget').innerHTML = `free · <em>${workingBudgetText()}</em>`;
+
+  // Render note labels under each block that has one — note + duration affix
+  const notesEl = document.getElementById('daystripNotes');
+  notesEl.innerHTML = '';
+  let anyNotes = false;
+  dayStripBlocks.forEach((block) => {
+    if (!block.note || !block.note.trim()) return;
+    anyNotes = true;
+    const midPct = ((block.start + (block.end - block.start) / 2) / DAY_MINUTES) * 100;
+    const duration = block.end - block.start;
+    const label = document.createElement('span');
+    label.className = 'daystrip-note-label';
+    label.style.left = midPct + '%';
+    label.textContent = `${block.note.trim()} (${formatDuration(duration)})`;
+    notesEl.appendChild(label);
+  });
+  document.body.classList.toggle('has-daystrip-notes', anyNotes);
 }
 
 // Tick the now marker every minute
@@ -4830,6 +5755,10 @@ setInterval(() => {
         anchorMin: pxToMin(strip, e.clientX),
         originalStart: block.start,
         originalEnd: block.end,
+        // Track whether we actually moved — if not, treat mouseup as a click
+        downX: e.clientX,
+        downY: e.clientY,
+        moved: false,
       };
       e.preventDefault();
       return;
@@ -4841,13 +5770,20 @@ setInterval(() => {
     draftEl.style.left = ((startMin / DAY_MINUTES) * 100) + '%';
     draftEl.style.width = '0%';
     strip.appendChild(draftEl);
-    dragState = { mode: 'create', startMin, draftEl };
+    dragState = { mode: 'create', startMin, draftEl, downX: e.clientX, downY: e.clientY };
     e.preventDefault();
   });
 
   document.addEventListener('mousemove', (e) => {
     if (!dragState) return;
     const curMin = pxToMin(strip, e.clientX);
+
+    // Track movement to distinguish click from drag
+    if (dragState.downX !== undefined) {
+      const dx = Math.abs(e.clientX - dragState.downX);
+      const dy = Math.abs(e.clientY - dragState.downY);
+      if (dx > 3 || dy > 3) dragState.moved = true;
+    }
 
     if (dragState.mode === 'create') {
       const s = Math.min(dragState.startMin, curMin);
@@ -4858,9 +5794,10 @@ setInterval(() => {
       el.querySelector('.daystrip-block-label')?.remove();
       const lbl = document.createElement('span');
       lbl.className = 'daystrip-block-label';
-      lbl.textContent = `${formatHM(s)}–${formatHM(en)}`;
+      lbl.textContent = formatHM(s);
       el.appendChild(lbl);
     } else if (dragState.mode === 'move') {
+      if (!dragState.moved) return; // don't move until the user actually drags
       const delta = curMin - dragState.anchorMin;
       const block = dayStripBlocks[dragState.idx];
       const duration = dragState.originalEnd - dragState.originalStart;
@@ -4901,17 +5838,130 @@ setInterval(() => {
       if (en - s < MIN_BLOCK_MIN) en = s + MIN_BLOCK_MIN;
       en = clampVal(en, 0, DAY_MINUTES);
       if (!blockOverlaps(s, en)) {
-        dayStripBlocks.push({ start: s, end: en });
+        dayStripBlocks.push({ start: s, end: en, note: '' });
+        save();
+        renderDayStrip();
+        // Open note editor on the freshly-created block
+        const newIdx = dayStripBlocks.length - 1;
+        openNoteEditor(newIdx);
+      } else {
+        save();
+        renderDayStrip();
       }
       dragState.draftEl.remove();
+    } else if (dragState.mode === 'move') {
       save();
-      renderDayStrip();
+      // Click without drag → open the note editor for this block
+      if (!dragState.moved) {
+        openNoteEditor(dragState.idx);
+      }
     } else {
       save();
     }
     dragState = null;
   });
 })();
+
+// ---- Note editor ----
+let noteEditingIdx = null;
+
+function openNoteEditor(idx) {
+  const block = dayStripBlocks[idx];
+  if (!block) return;
+  noteEditingIdx = idx;
+  const editor = document.getElementById('daystripNoteEditor');
+  const input = document.getElementById('daystripNoteInput');
+  // Position editor under the center of the block. The editor's transform:translateX(-50%)
+  // handles horizontal centering; we just need the correct `left` value.
+  // The daystrip itself has margins (84px left, 132px right) inside the wrap.
+  const strip = document.getElementById('daystrip');
+  const stripRect = strip.getBoundingClientRect();
+  const wrap = document.getElementById('daystripWrap');
+  const wrapRect = wrap.getBoundingClientRect();
+  const midPct = (block.start + (block.end - block.start) / 2) / DAY_MINUTES;
+  // X within the strip, then convert to wrap-local coordinates
+  const xWithinStrip = stripRect.width * midPct;
+  const xInWrap = (stripRect.left - wrapRect.left) + xWithinStrip;
+  editor.style.left = xInWrap + 'px';
+  // Clamp so editor doesn't go off-screen left/right
+  // Use a microtask delay to let layout settle
+  editor.classList.add('show');
+  input.value = block.note || '';
+  setTimeout(() => {
+    input.focus();
+    input.select();
+    // Re-check edge clamping after the editor is visible
+    const er = editor.getBoundingClientRect();
+    if (er.left < 8) {
+      editor.style.left = (xInWrap + (8 - er.left)) + 'px';
+    } else if (er.right > window.innerWidth - 8) {
+      editor.style.left = (xInWrap - (er.right - (window.innerWidth - 8))) + 'px';
+    }
+  }, 0);
+}
+
+function closeNoteEditor(save_) {
+  if (noteEditingIdx === null) return;
+  const editor = document.getElementById('daystripNoteEditor');
+  const input = document.getElementById('daystripNoteInput');
+  if (save_) {
+    const block = dayStripBlocks[noteEditingIdx];
+    if (block) {
+      block.note = input.value.trim();
+      save();
+      renderDayStrip();
+    }
+  }
+  editor.classList.remove('show');
+  input.value = '';
+  noteEditingIdx = null;
+}
+
+document.getElementById('daystripNoteInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    closeNoteEditor(true);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    closeNoteEditor(false);
+  }
+});
+
+// Click outside the editor closes & saves (graceful exit). We avoid re-rendering here
+// because that would detach the click target from the DOM before the strip's own
+// mousedown handler can process it. Instead, mutate the note in place and let the
+// next natural render reflect it.
+document.addEventListener('mousedown', (e) => {
+  if (noteEditingIdx === null) return;
+  const editor = document.getElementById('daystripNoteEditor');
+  if (editor.contains(e.target)) return;
+  // Commit the note in-place (no immediate re-render)
+  const input = document.getElementById('daystripNoteInput');
+  const block = dayStripBlocks[noteEditingIdx];
+  if (block) {
+    block.note = input.value.trim();
+    save();
+  }
+  editor.classList.remove('show');
+  input.value = '';
+  noteEditingIdx = null;
+  // Update the visible note label asynchronously so DOM under the click stays stable
+  requestAnimationFrame(renderDayStrip);
+}, true); // capture so we run before the strip's own handler
+
+// View nav rail clicks — clicking Stats or Journal toggles like the S / R keys
+document.querySelectorAll('.view-nav-item').forEach(el => {
+  el.addEventListener('click', () => {
+    const target = el.dataset.viewNav;
+    if (target === 'stats') {
+      if (currentView === 'stats') exitStats();
+      else openStats();
+    } else if (target === 'journal') {
+      if (currentView === 'journal') exitJournal();
+      else openJournal();
+    }
+  });
+});
 
 // ============ BOOT ============
 (async () => {
