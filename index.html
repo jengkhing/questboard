@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v83</title>
+<title>Kanban Quest — v87</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -106,9 +106,13 @@
   .app {
     position: relative;
     z-index: 2;
-    max-width: 1400px;
+    /* Wider max-width so the board uses more of common monitor sizes
+       (1920px monitors get ~60px gutters instead of 260px). Ultra-wide
+       displays (>1800px) still see some padding, which keeps cards
+       readable rather than stretching to absurd widths. */
+    max-width: 1800px;
     margin: 0 auto;
-    padding: 24px 48px 12px 48px;
+    padding: 24px 24px 12px 24px;
   }
 
   /* View row — wraps the primary tabs (Active/Backlog) and the auxiliary
@@ -302,6 +306,210 @@
   .vel-delta.up { color: var(--accent); }
   .vel-delta.down { color: var(--accent-warm); }
   .vel-delta.flat { color: var(--ink-faint); }
+
+  /* ============ WEEKLY VISION ============ */
+  /* Banner above the kanban. Three outcome cards arranged in a row.
+     Anchors the week with intentions, not just task minutiae. */
+  .weekly-vision {
+    margin-bottom: 28px;
+    padding: 22px 24px 24px;
+    background: linear-gradient(180deg,
+      rgba(212, 255, 58, 0.025) 0%,
+      rgba(212, 255, 58, 0.005) 60%,
+      transparent 100%);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Subtle horizontal sweep at the top of the banner — gives it a "fresh week" feel */
+  .weekly-vision::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.4;
+  }
+  .wv-header {
+    margin-bottom: 18px;
+  }
+  .wv-title {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 28px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin: 0 0 4px;
+  }
+  .wv-title em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  /* Live counter — shows how many slots have text. Sized to read clearly
+     next to the title without competing with it. Hidden when empty (0). */
+  .wv-count {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    color: var(--ink-dim);
+    margin-left: 12px;
+    vertical-align: baseline;
+  }
+  .wv-prompt {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+  .wv-outcomes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .wv-outcome {
+    position: relative;
+    padding: 16px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--line-soft);
+    border-radius: 3px;
+    min-height: 80px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.3s;
+    cursor: text;
+  }
+  .wv-outcome:hover {
+    border-color: var(--ink-faint);
+  }
+  .wv-outcome.empty {
+    border-style: dashed;
+    background: transparent;
+  }
+  .wv-outcome.empty:hover {
+    border-color: var(--accent);
+    background: rgba(212, 255, 58, 0.02);
+  }
+  .wv-num {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--ink-faint);
+    flex-shrink: 0;
+    margin-top: 4px;
+    user-select: none;
+    transition: color 0.3s;
+  }
+  .wv-text {
+    flex: 1;
+    font-family: var(--serif);
+    /* Italic serif signals "declaration of intent" — same visual language as
+       the accented italic em used throughout the app (Quest *board.*,
+       Weekly *outcomes*). Regular weight, slightly larger, comfortable
+       leading. Reads as a statement, not a note. */
+    font-size: 18px;
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: -0.005em;
+    line-height: 1.4;
+    color: var(--ink);
+    word-break: normal;
+    overflow-wrap: break-word;
+    min-width: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    cursor: text;
+    transition: color 0.3s;
+  }
+  .wv-text[contenteditable="true"] {
+    background: rgba(212, 255, 58, 0.05);
+    box-shadow: inset 0 0 0 1px var(--accent);
+    padding: 4px 6px;
+    margin: -4px -6px;
+    border-radius: 2px;
+  }
+  /* Placeholder state — upright (non-italic) so it visually contrasts with
+     real italicized outcomes. Reads as a "tap to add" hint, not a statement. */
+  .wv-text-empty {
+    font-style: normal;
+    font-weight: 400;
+    color: var(--ink-faint);
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+  .wv-check {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 22px;
+    height: 22px;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.2s;
+    display: none;
+  }
+  .wv-outcome.has-text .wv-check { display: block; }
+  .wv-outcome.has-text .wv-check:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(212, 255, 58, 0.08);
+  }
+  .wv-outcome.has-text .wv-text {
+    padding-right: 32px;
+  }
+  /* Achieved state — gold flash + line-through + check stamp */
+  .wv-outcome.achieved {
+    background: linear-gradient(180deg,
+      rgba(212, 255, 58, 0.12) 0%,
+      rgba(212, 255, 58, 0.04) 100%);
+    border-color: var(--accent);
+    box-shadow: 0 0 24px rgba(212, 255, 58, 0.15);
+  }
+  .wv-outcome.achieved .wv-text {
+    color: var(--ink-dim);
+    text-decoration: line-through;
+    text-decoration-color: rgba(212, 255, 58, 0.6);
+    text-decoration-thickness: 1px;
+  }
+  .wv-outcome.achieved .wv-num {
+    color: var(--accent);
+  }
+  .wv-outcome.achieved .wv-check {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: bold;
+  }
+  /* Gold flash burst — fires once when newly achieved */
+  .wv-outcome.flashing {
+    animation: wv-gold-flash 0.9s ease-out;
+  }
+  @keyframes wv-gold-flash {
+    0%   { box-shadow: 0 0 0 rgba(212, 255, 58, 0); transform: scale(1); }
+    25%  { box-shadow: 0 0 60px rgba(212, 255, 58, 0.6); transform: scale(1.03); }
+    100% { box-shadow: 0 0 24px rgba(212, 255, 58, 0.15); transform: scale(1); }
+  }
+  /* Mobile: stack outcomes vertically */
+  @media (max-width: 700px) {
+    .wv-outcomes { grid-template-columns: 1fr; gap: 10px; }
+    .wv-outcome { min-height: 64px; }
+    .wv-title { font-size: 22px; }
+    .weekly-vision { padding: 16px 16px 18px; }
+  }
 
   /* BOARD */
   .board {
@@ -2445,6 +2653,33 @@
     white-space: nowrap;
   }
 
+  /* Outcome (Weekly Vision achievement) journal entry — quest-log style.
+     Subtle accent wash and a distinct tag with a filled diamond. */
+  .journal-source .outcome-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .journal-entry.is-outcome {
+    background: linear-gradient(90deg,
+      rgba(212, 255, 58, 0.05) 0%,
+      rgba(212, 255, 58, 0.015) 60%,
+      transparent 100%);
+    border-radius: 3px;
+    margin: 0 -8px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .journal-entry.is-outcome .journal-note {
+    font-style: normal;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
   @media (max-width: 900px) {
     .journal { padding: 8px 0 60px; }
     .journal-title { font-size: 28px; }
@@ -3366,7 +3601,7 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v83</span>
+      <span class="eyebrow">— Kanban / v87</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <div class="level-block">
@@ -3397,6 +3632,17 @@
       <span class="view-nav-item" data-view-nav="journal" title="Journal — press R">Journal</span>
     </div>
   </div>
+
+  <!-- Weekly Vision — 3 outcomes that anchor the week. Shown only on Active view. -->
+  <section class="weekly-vision" id="weeklyVision" data-view-target="active">
+    <div class="wv-header">
+      <h2 class="wv-title">Weekly <em>outcomes</em><span class="wv-count" id="wvCount"></span></h2>
+      <p class="wv-prompt">What three outcomes will define this week?</p>
+    </div>
+    <div class="wv-outcomes" id="wvOutcomes">
+      <!-- Three outcome cards rendered here -->
+    </div>
+  </section>
 
   <div class="board" id="board" data-view-target="active">
     <div class="column" data-col="todo">
@@ -3589,7 +3835,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v83</span>
+      <span class="footer-version">v87</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
@@ -4010,6 +4256,10 @@ let state = {
   xp: 0,
   level: 1,
   totalDone: 0,
+  // Weekly Vision — 3 outcomes the user commits to for the current ISO week.
+  // Rolls over each Monday: current vision moves to visionHistory, new empty slots appear.
+  weeklyVision: null,   // { weekKey, outcomes: [{id, text, createdAt, achievedAt}] }
+  visionHistory: [],    // [{ weekKey, outcomes: [...] }, ...] — past weeks for the Journal
 };
 let pendingPain = { todo: 3, backlog: 3, 'quest-todo': 3 };
 let pendingType = { todo: 'task', backlog: 'task' };
@@ -4229,6 +4479,53 @@ function currentDayKey() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// ISO week key — e.g. "2026-W20". ISO weeks run Monday → Sunday.
+// Used for the Weekly Vision feature so each new Monday starts fresh outcomes.
+function currentWeekKey() {
+  const d = new Date();
+  // 4am-anchored: if we're between midnight and 4am, treat as the previous day
+  if (d.getHours() < 4) d.setDate(d.getDate() - 1);
+  // ISO week algorithm: Thursday determines the year, week number is count-of-Thursdays
+  d.setHours(0, 0, 0, 0);
+  // Set d to the nearest Thursday: current date + 4 - current day number (Sun=0 → 7)
+  const dayNum = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - dayNum);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const weekNum = Math.ceil((((d - yearStart) / DAY) + 1) / 7);
+  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+// Make a fresh, empty vision for a given week
+function emptyVision(weekKey) {
+  return {
+    weekKey,
+    outcomes: [
+      { id: 'v_' + uid(), text: '', createdAt: null, achievedAt: null },
+      { id: 'v_' + uid(), text: '', createdAt: null, achievedAt: null },
+      { id: 'v_' + uid(), text: '', createdAt: null, achievedAt: null },
+    ],
+  };
+}
+
+// Roll the vision forward if the calendar week has changed.
+// Archive the previous week's vision (if it had any content) into visionHistory.
+function rolloverVisionIfNeeded() {
+  const currentKey = currentWeekKey();
+  if (!state.weeklyVision) {
+    state.weeklyVision = emptyVision(currentKey);
+    return;
+  }
+  if (state.weeklyVision.weekKey === currentKey) return;
+  // Week changed — archive the old one if it had any text content
+  const old = state.weeklyVision;
+  const hasContent = old.outcomes.some(o => o.text && o.text.trim());
+  if (hasContent) {
+    if (!Array.isArray(state.visionHistory)) state.visionHistory = [];
+    state.visionHistory.push(old);
+  }
+  state.weeklyVision = emptyVision(currentKey);
+}
+
 async function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -4253,19 +4550,175 @@ async function load() {
       dayStripKey = currentDayKey();
     }
   } catch (e) { /* fresh start */ }
-  // Migration (v16): grandfather existing Done tasks as already-awarded so re-shuffling
-  // them doesn't unexpectedly award XP retroactively.
+  // Migration: existing Done tasks are grandfathered as already-awarded so
+  // re-shuffling them doesn't unexpectedly award XP retroactively.
   state.tasks.forEach(t => {
     if (t.col === 'done' && t.awarded === undefined) {
       t.awarded = true;
     }
   });
+  // Weekly Vision: ensure something exists for the current week (rollover if needed)
+  rolloverVisionIfNeeded();
 }
 async function save() {
   try {
     const payload = { ...state, dayStripBlocks, dayStripKey, statsRangeIdx };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch (e) { /* quota exceeded or disabled — ignore */ }
+}
+
+// ============ WEEKLY VISION ============
+// Renders the 3-outcome banner above the kanban. Editable text inline.
+// Marking achieved fires confetti + gold flash + journal entry.
+
+function renderWeeklyVision() {
+  // Defensive: ensure we have a current-week vision (in case load() didn't run yet)
+  if (!state.weeklyVision || state.weeklyVision.weekKey !== currentWeekKey()) {
+    rolloverVisionIfNeeded();
+  }
+  const container = document.getElementById('wvOutcomes');
+  if (!container) return;
+
+  // Update the live counter in the title — shows count of filled slots (1, 2, 3).
+  // Hidden when 0 since "(0)" looks awkward and the title alone reads cleanly.
+  const counter = document.getElementById('wvCount');
+  if (counter) {
+    const filled = state.weeklyVision.outcomes.filter(o => o.text && o.text.trim()).length;
+    counter.textContent = filled > 0 ? `(${filled})` : '';
+  }
+
+  container.innerHTML = '';
+  const outcomes = state.weeklyVision.outcomes;
+  outcomes.forEach((outcome, idx) => {
+    const card = document.createElement('div');
+    card.className = 'wv-outcome';
+    card.dataset.outcomeId = outcome.id;
+    const hasText = !!(outcome.text && outcome.text.trim());
+    if (!hasText) card.classList.add('empty');
+    if (hasText) card.classList.add('has-text');
+    if (outcome.achievedAt) card.classList.add('achieved');
+
+    // Number prefix (01, 02, 03)
+    const num = document.createElement('span');
+    num.className = 'wv-num';
+    num.textContent = String(idx + 1).padStart(2, '0');
+    card.appendChild(num);
+
+    // Text — contenteditable for inline editing
+    const text = document.createElement('div');
+    text.className = 'wv-text' + (hasText ? '' : ' wv-text-empty');
+    text.textContent = hasText ? outcome.text : 'Click to set outcome…';
+    card.appendChild(text);
+
+    // Wire text editing
+    text.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (text.getAttribute('contenteditable') === 'true') return;
+      if (outcome.achievedAt) return; // can't edit achieved outcomes; toggle off first
+      // Switch into edit mode — clear placeholder if empty
+      if (!hasText) {
+        text.textContent = '';
+        text.classList.remove('wv-text-empty');
+      }
+      text.setAttribute('contenteditable', 'true');
+      text.focus();
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+    text.addEventListener('blur', () => {
+      text.removeAttribute('contenteditable');
+      const newText = text.textContent.trim();
+      if (newText !== (outcome.text || '')) {
+        if (newText && !outcome.createdAt) outcome.createdAt = nowMs();
+        outcome.text = newText;
+        save();
+      }
+      renderWeeklyVision();
+    });
+    text.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        text.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        text.textContent = outcome.text || '';
+        text.blur();
+      }
+    });
+
+    // Check button — appears only when there's text
+    const check = document.createElement('button');
+    check.className = 'wv-check';
+    check.textContent = outcome.achievedAt ? '✓' : '';
+    check.title = outcome.achievedAt ? 'Mark as not yet achieved' : 'Mark as achieved';
+    check.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleOutcomeAchieved(outcome.id, card);
+    });
+    card.appendChild(check);
+
+    container.appendChild(card);
+  });
+}
+
+function toggleOutcomeAchieved(outcomeId, cardEl) {
+  if (!state.weeklyVision) return;
+  const outcome = state.weeklyVision.outcomes.find(o => o.id === outcomeId);
+  if (!outcome || !outcome.text || !outcome.text.trim()) return;
+
+  if (outcome.achievedAt) {
+    // Toggle off — unmark
+    outcome.achievedAt = null;
+    save();
+    renderWeeklyVision();
+  } else {
+    // Mark achieved — set timestamp, fire juice, log to journal
+    outcome.achievedAt = nowMs();
+    save();
+    // Add the achievement to the journal as a special "outcome achieved" entry.
+    // This is a synthetic journal entry — not a real task, just a memory of the win.
+    // (The Journal render pulls these from state.visionHistory + the current vision.)
+
+    // Visual juice — gold flash + confetti
+    if (cardEl) {
+      cardEl.classList.add('flashing');
+      setTimeout(() => cardEl.classList.remove('flashing'), 900);
+      // Burst confetti at the center of the card
+      const rect = cardEl.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      burstOutcomeParticles(cx, cy);
+    }
+    // Re-render after a tiny delay so the flash plays smoothly first
+    setTimeout(() => renderWeeklyVision(), 60);
+  }
+}
+
+// Confetti particle burst — modeled after the existing handleCompletion juice
+function burstOutcomeParticles(x, y) {
+  const layer = document.getElementById('particleLayer') || document.body;
+  const N = 18;
+  for (let i = 0; i < N; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = (Math.PI * 2 * i) / N + (Math.random() - 0.5) * 0.4;
+    const dist = 60 + Math.random() * 80;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist;
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.style.setProperty('--dx', dx + 'px');
+    p.style.setProperty('--dy', dy + 'px');
+    // Mix of accent + warm orange for variety
+    p.style.background = i % 3 === 0 ? 'var(--accent-warm)' : 'var(--accent)';
+    p.style.boxShadow = `0 0 8px ${i % 3 === 0 ? 'var(--accent-warm)' : 'var(--accent)'}`;
+    layer.appendChild(p);
+    setTimeout(() => p.remove(), 900);
+  }
 }
 
 // ============ VELOCITY ============
@@ -4423,6 +4876,10 @@ function render() {
   document.querySelectorAll('.view-toggle-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === currentView);
   });
+
+  // Weekly Vision — render outcome cards (only relevant on active view but the
+  // function is safe to call regardless; the banner is hidden by view-target)
+  renderWeeklyVision();
 
   // Pain filter UI sync
   document.querySelectorAll('.legend-item[data-pain]').forEach(item => {
@@ -6331,14 +6788,33 @@ function renderJournal() {
         time: entry.time,
         note: entry.note,
         task: t,
+        kind: 'focus',
       });
+    });
+  });
+
+  // Inject achieved outcomes from current vision + history. These are special
+  // "milestone" entries that read as victory log lines, matching the quest-log feel.
+  const visionsToInclude = [];
+  if (state.weeklyVision) visionsToInclude.push(state.weeklyVision);
+  if (Array.isArray(state.visionHistory)) visionsToInclude.push(...state.visionHistory);
+  visionsToInclude.forEach(vision => {
+    vision.outcomes.forEach(o => {
+      if (o.achievedAt && o.text) {
+        allEntries.push({
+          time: o.achievedAt,
+          note: o.text,
+          kind: 'outcome',
+          weekKey: vision.weekKey,
+        });
+      }
     });
   });
 
   if (allEntries.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'journal-empty';
-    empty.textContent = 'No journal entries yet — focus mode check-ins will appear here.';
+    empty.textContent = 'No journal entries yet — focus check-ins and achieved outcomes will appear here.';
     body.appendChild(empty);
     return;
   }
@@ -6359,38 +6835,45 @@ function renderJournal() {
 
     const row = document.createElement('div');
     row.className = 'journal-entry';
+    if (entry.kind === 'outcome') row.classList.add('is-outcome');
 
-    // Source column — task or quest reference
+    // Source column — task/quest reference, or "Outcome achieved" for vision entries
     const source = document.createElement('div');
     source.className = 'journal-source';
-    const t = entry.task;
-    if (t.type === 'quest') {
-      // A Quest-level entry (rare — Quests don't typically have focusLog since they don't focus)
+
+    if (entry.kind === 'outcome') {
+      // Vision outcome achievement — distinct "milestone" entry, quest-log style
       const tag = document.createElement('span');
-      tag.className = 'quest-tag';
-      tag.textContent = 'Quest';
-      const name = document.createElement('span');
-      name.className = 'quest-name';
-      name.textContent = t.text;
+      tag.className = 'outcome-tag';
+      tag.textContent = '◆ Outcome';
       source.appendChild(tag);
-      source.appendChild(name);
-    } else if (t.questId) {
-      // Linked task — show parent Quest + the objective
-      const parent = state.tasks.find(x => x.id === t.questId);
-      const tag = document.createElement('span');
-      tag.className = 'quest-tag';
-      tag.textContent = parent ? `Quest: ${parent.text}` : 'Quest';
-      const name = document.createElement('span');
-      name.className = 'objective-name';
-      name.textContent = t.text;
-      source.appendChild(tag);
-      source.appendChild(name);
     } else {
-      // Plain task
-      const name = document.createElement('span');
-      name.className = 'task-name';
-      name.textContent = t.text;
-      source.appendChild(name);
+      const t = entry.task;
+      if (t.type === 'quest') {
+        const tag = document.createElement('span');
+        tag.className = 'quest-tag';
+        tag.textContent = 'Quest';
+        const name = document.createElement('span');
+        name.className = 'quest-name';
+        name.textContent = t.text;
+        source.appendChild(tag);
+        source.appendChild(name);
+      } else if (t.questId) {
+        const parent = state.tasks.find(x => x.id === t.questId);
+        const tag = document.createElement('span');
+        tag.className = 'quest-tag';
+        tag.textContent = parent ? `Quest: ${parent.text}` : 'Quest';
+        const name = document.createElement('span');
+        name.className = 'objective-name';
+        name.textContent = t.text;
+        source.appendChild(tag);
+        source.appendChild(name);
+      } else {
+        const name = document.createElement('span');
+        name.className = 'task-name';
+        name.textContent = t.text;
+        source.appendChild(name);
+      }
     }
 
     // Note
