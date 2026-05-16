@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v78</title>
+<title>Kanban Quest — v83</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -532,7 +532,7 @@
        the container width. No mid-word splitting on regular titles. */
     word-break: normal;
     overflow-wrap: break-word;
-    padding-right: 76px;
+    padding-right: 8px;
     margin-bottom: 10px;
     cursor: text;
     border-radius: 2px;
@@ -546,6 +546,15 @@
     background: rgba(212, 255, 58, 0.05);
     box-shadow: inset 0 0 0 1px var(--accent);
     cursor: text;
+  }
+  /* When editing a link-task title, lift the single-line clipping so the user
+     can see and edit the full text. Re-applies on blur. */
+  .task-title-row .task-text[contenteditable="true"] {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: normal;
+    overflow-wrap: break-word;
   }
   .task.done .task-text {
     color: var(--ink-faint);
@@ -562,14 +571,18 @@
   .task-title-row .task-text {
     flex: 1;
     min-width: 0;
+    padding-right: 0; /* overrides the default; ↗ icon provides spacing */
     /* Link-task titles use mono so the URL feel reads through */
     font-family: var(--mono);
     font-size: 13px;
     letter-spacing: 0;
     line-height: 1.35;
-    /* Smart-labels have natural word boundaries; don't mid-break long tokens */
-    word-break: normal;
-    overflow-wrap: break-word;
+    /* Single line + ellipsis: link labels don't need to be fully visible on the
+       card — the full label + URL is one click away in the detail overlay.
+       Keeps narrow columns clean instead of breaking long URLs into many lines. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .task.is-link .task-text {
     color: var(--ink-dim);
@@ -1380,7 +1393,9 @@
   .backlog-body {
     padding: 16px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    /* Cards stay narrow like kanban cards — fits more columns. 200px minimum
+       matches the kanban column minimum so cards feel consistent across views. */
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 10px;
     align-content: start;
     /* Fill remaining vertical space so the input below sits at the bottom
@@ -1784,7 +1799,7 @@
   }
 
   .task.has-unlink .task-text {
-    padding-right: 100px;
+    padding-right: 36px;
   }
 
   /* Quest card as a drop target — charging state (during dwell) and committed state. */
@@ -1837,7 +1852,7 @@
   .task-unlink {
     position: absolute;
     top: 10px;
-    right: 76px;
+    right: 10px;
     width: 18px;
     height: 18px;
     border: none;
@@ -2442,6 +2457,54 @@
       grid-column: 1;
       justify-self: start;
     }
+  }
+
+  /* ============ TASK CONTEXT MENU (right-click) ============ */
+  .task-ctx-menu {
+    position: fixed;
+    z-index: 220;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 4px;
+    min-width: 180px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    user-select: none;
+  }
+  .task-ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    color: var(--ink-dim);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .task-ctx-item:hover {
+    background: rgba(212, 255, 58, 0.08);
+    color: var(--ink);
+  }
+  .task-ctx-item.danger:hover {
+    background: rgba(248, 113, 113, 0.15);
+    color: var(--pain-5);
+  }
+  .task-ctx-icon {
+    font-size: 10px;
+    color: var(--ink-faint);
+    width: 14px;
+    text-align: center;
+  }
+  .task-ctx-item:hover .task-ctx-icon { color: var(--accent); }
+  .task-ctx-item.danger:hover .task-ctx-icon { color: var(--pain-5); }
+  .task-ctx-sep {
+    height: 1px;
+    background: var(--line-soft);
+    margin: 4px 0;
   }
 
   /* ============ TASK DETAIL OVERLAY ============ */
@@ -3215,9 +3278,8 @@
   .task:hover .task-archive { opacity: 1; }
   .task-archive:hover { color: var(--ink); }
 
-  @media (max-width: 900px) {
-    .backlog-body { grid-template-columns: 1fr; }
-  }
+  /* Backlog single-column collapse only at very narrow widths (handled in the
+     600px breakpoint below alongside other mobile-specific rules). */
 
   @media (max-width: 900px) {
     .app { padding: 24px 16px 140px; }
@@ -3247,8 +3309,7 @@
     .vel-cell:nth-child(2n) { border-right: none; }
     .vel-cell:nth-last-child(-n+2) { border-bottom: none; }
 
-    /* Backlog stays single-column on mobile (it's a pile, not a workflow) */
-    .backlog-body { grid-template-columns: 1fr; }
+    /* Backlog input margin only — column layout is responsive via auto-fill */
     .backlog-add { margin: 12px 16px 8px; }
 
     /* Footer */
@@ -3258,6 +3319,9 @@
   /* Phone-sized screens: thinner columns, sized to fit ~1.5 columns on screen
      so user sees a hint of the next one. Smooth scrolling, no forced snap. */
   @media (max-width: 600px) {
+    /* Backlog: single column on phones since 200px minimum would only fit one anyway */
+    .backlog-body { grid-template-columns: 1fr; }
+
     .board {
       grid-template-columns: repeat(4, 70vw);
       gap: 12px;
@@ -3302,7 +3366,7 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v78</span>
+      <span class="eyebrow">— Kanban / v83</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <div class="level-block">
@@ -3475,8 +3539,6 @@
   <div data-view-target="journal" style="display:none">
     <div class="breadcrumb">
       <button class="breadcrumb-back" id="journalBack">← Quest board</button>
-      <span class="breadcrumb-sep">/</span>
-      <span class="breadcrumb-current">Journal</span>
     </div>
     <div class="journal">
       <h1 class="journal-title">What you've <em>done.</em></h1>
@@ -3488,8 +3550,6 @@
   <div data-view-target="stats" style="display:none">
     <div class="breadcrumb">
       <button class="breadcrumb-back" id="statsBack">← Quest board</button>
-      <span class="breadcrumb-sep">/</span>
-      <span class="breadcrumb-current">Stats</span>
     </div>
     <div class="stats-page">
       <h1 class="stats-title">The past&nbsp;<em class="stats-range" id="statsRange" title="Swipe / scroll up &darr; or click to change range"><span class="range-viewport"><span class="range-drum" id="statsRangeDrum"></span></span></em></h1>
@@ -3529,7 +3589,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v78</span>
+      <span class="footer-version">v83</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
@@ -3752,6 +3812,9 @@
     </svg>
   </div>
 </div>
+
+<!-- Task context menu (right-click on a card) -->
+<div class="task-ctx-menu" id="taskCtxMenu" style="display:none" role="menu" aria-hidden="true"></div>
 
 <!-- Task detail overlay — click a task card to expand it here.
      Editable title + description + image attachments. -->
@@ -4514,9 +4577,12 @@ function renderTask(t) {
   const text = document.createElement('div');
   text.className = 'task-text';
   text.textContent = t.text;
-  text.title = 'Click to edit';
   if (t.url) {
     el.classList.add('is-link');
+    // Show the full label on hover since the visible text is single-line clipped
+    text.title = t.text;
+  } else {
+    text.title = 'Click to edit';
   }
   text.addEventListener('click', (e) => {
     if (text.getAttribute('contenteditable') === 'true') return;
@@ -4627,7 +4693,7 @@ function renderTask(t) {
     el.appendChild(descRender);
   }
 
-  // Meta row (pain + label)
+  // Meta row (pain pips only - the text label was removed in v81 for breathing room)
   const meta = document.createElement('div');
   meta.className = 'task-meta';
   const pips = document.createElement('div');
@@ -4635,7 +4701,7 @@ function renderTask(t) {
   for (let i = 1; i <= 5; i++) {
     const p = document.createElement('div');
     p.className = 'pip' + (i <= t.pain ? ` on-${t.pain}` : '');
-    p.title = `Set pain to ${i}`;
+    p.title = `Pain ${i}`;
     p.addEventListener('click', (e) => {
       e.stopPropagation();
       if (t.col === 'done') return;
@@ -4645,11 +4711,6 @@ function renderTask(t) {
     pips.appendChild(p);
   }
   meta.appendChild(pips);
-
-  const label = document.createElement('span');
-  label.className = 'pain-label';
-  label.textContent = `pain ${t.pain} · ${xpForPain(t.pain, t.type)} xp`;
-  meta.appendChild(label);
   el.appendChild(meta);
 
   // Quest mini-progress (only on main-board Quest cards with children)
@@ -4676,44 +4737,9 @@ function renderTask(t) {
     el.appendChild(hint);
   }
 
-  // Edit-description button (pencil) — opens textarea
-  const edit = document.createElement('button');
-  edit.className = 'task-edit';
-  edit.textContent = hasDesc ? '✎' : '+';
-  edit.title = hasDesc ? 'Edit description' : 'Add description';
-  edit.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (editingDesc.has(t.id)) {
-      editingDesc.delete(t.id);
-    } else {
-      editingDesc.add(t.id);
-    }
-    render();
-  });
-  el.appendChild(edit);
-
-  // Archive (send to backlog) / Restore (back to Todo)
-  const archive = document.createElement('button');
-  archive.className = 'task-archive';
-  archive.textContent = t.backlog ? '↑' : '↓';
-  archive.title = t.backlog ? 'Restore to Todo' : 'Send to Backlog';
-  archive.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (t.backlog) {
-      // Restore — clear backlog flag, move to Todo, clear completedAt
-      t.backlog = false;
-      t.col = 'todo';
-      t.completedAt = null;
-    } else {
-      // Archive — set backlog flag. Keep its col so it remembers where it was.
-      t.backlog = true;
-    }
-    editingDesc.delete(t.id);
-    save(); render();
-  });
-  el.appendChild(archive);
-
-  // Unlink (extract from Quest, send back to main board) — only on linked tasks in Quest view
+  // Unlink (extract from Quest, send back to main board) — only on linked tasks
+  // in Quest view. Kept as a card button because it is contextually rare
+  // and benefits from a one-tap affordance vs the right-click menu.
   if (showUnlink) {
     const unlink = document.createElement('button');
     unlink.className = 'task-unlink';
@@ -4726,19 +4752,8 @@ function renderTask(t) {
     });
     el.appendChild(unlink);
   }
-
-  // Delete button
-  const del = document.createElement('button');
-  del.className = 'task-del';
-  del.textContent = '×';
-  del.title = 'Delete';
-  del.addEventListener('click', (e) => {
-    e.stopPropagation();
-    state.tasks = state.tasks.filter(x => x.id !== t.id);
-    editingDesc.delete(t.id);
-    save(); render();
-  });
-  el.appendChild(del);
+  // Other actions (edit description, send to backlog, delete) live in the
+  // right-click context menu now to keep the card visually clean.
 
   // Drag handlers — block when editing
   el.addEventListener('dragstart', (e) => {
@@ -4772,6 +4787,14 @@ function renderTask(t) {
       openTaskDetail(t.id);
     });
   }
+
+  // Right-click on any card → open the contextual menu with relevant actions.
+  // Stop propagation so the page-level back-nav contextmenu doesn't also fire.
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openTaskCtxMenu(t.id, e.clientX, e.clientY);
+  });
 
   // After the card lands in the DOM, check if its content overflows the max-height.
   // If so, add .is-clipped so the fade gradient hints at hidden content.
@@ -5355,6 +5378,135 @@ function bindQuestBoardDnD() {
   });
 }
 bindQuestBoardDnD();
+
+// ============ TASK CONTEXT MENU (right-click) ============
+// Right-click a task card → small menu opens at cursor with relevant actions.
+// Click outside or press Esc to close.
+const taskCtxMenu = document.getElementById('taskCtxMenu');
+let ctxMenuTaskId = null;
+
+function openTaskCtxMenu(taskId, x, y) {
+  const t = state.tasks.find(x => x.id === taskId);
+  if (!t) return;
+  ctxMenuTaskId = taskId;
+
+  // Build the menu based on this task's current state
+  const items = [];
+  if (t.backlog) {
+    items.push({
+      icon: '→', label: 'Move to Active', danger: false,
+      action: () => {
+        t.backlog = false;
+        t.col = 'todo';
+        save(); render();
+      }
+    });
+  } else {
+    items.push({
+      icon: '↓', label: 'Send to Backlog', danger: false,
+      action: () => {
+        t.backlog = true;
+        save(); render();
+      }
+    });
+  }
+  // Open detail (mirror single-click) — useful for users who reach right-click first
+  if (t.type !== 'quest') {
+    items.push({
+      icon: '⛶', label: 'Open detail', danger: false,
+      action: () => openTaskDetail(taskId),
+    });
+  }
+  // Unlink from Quest — only if this task is linked to a parent Quest
+  if (t.questId) {
+    items.push({
+      icon: '⤴', label: 'Unlink from Quest', danger: false,
+      action: () => {
+        t.questId = null;
+        save(); render();
+      }
+    });
+  }
+  items.push({ separator: true });
+  items.push({
+    icon: '×', label: 'Delete task', danger: true,
+    action: () => {
+      // Confirm-style: require a quick second click. For now, single click deletes —
+      // task is gone and child tasks (if Quest) are unlinked but kept.
+      if (t.type === 'quest') {
+        // Unlink children rather than cascade-delete
+        state.tasks.forEach(c => { if (c.questId === taskId) c.questId = null; });
+      }
+      state.tasks = state.tasks.filter(x => x.id !== taskId);
+      save(); render();
+    }
+  });
+
+  // Render the menu DOM
+  taskCtxMenu.innerHTML = '';
+  for (const it of items) {
+    if (it.separator) {
+      const sep = document.createElement('div');
+      sep.className = 'task-ctx-sep';
+      taskCtxMenu.appendChild(sep);
+      continue;
+    }
+    const row = document.createElement('div');
+    row.className = 'task-ctx-item' + (it.danger ? ' danger' : '');
+    row.setAttribute('role', 'menuitem');
+    const icon = document.createElement('span');
+    icon.className = 'task-ctx-icon';
+    icon.textContent = it.icon;
+    const label = document.createElement('span');
+    label.textContent = it.label;
+    row.appendChild(icon);
+    row.appendChild(label);
+    row.addEventListener('click', () => {
+      closeTaskCtxMenu();
+      it.action();
+    });
+    taskCtxMenu.appendChild(row);
+  }
+
+  // Position the menu, keeping it inside the viewport
+  taskCtxMenu.style.display = 'block';
+  taskCtxMenu.style.visibility = 'hidden'; // measure first
+  taskCtxMenu.style.left = '0px';
+  taskCtxMenu.style.top = '0px';
+  const rect = taskCtxMenu.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const left = Math.min(x, vw - rect.width - 8);
+  const top  = Math.min(y, vh - rect.height - 8);
+  taskCtxMenu.style.left = Math.max(8, left) + 'px';
+  taskCtxMenu.style.top  = Math.max(8, top)  + 'px';
+  taskCtxMenu.style.visibility = 'visible';
+  taskCtxMenu.setAttribute('aria-hidden', 'false');
+}
+
+function closeTaskCtxMenu() {
+  if (!ctxMenuTaskId) return;
+  ctxMenuTaskId = null;
+  taskCtxMenu.style.display = 'none';
+  taskCtxMenu.setAttribute('aria-hidden', 'true');
+}
+
+// Click anywhere else closes the menu
+document.addEventListener('click', (e) => {
+  if (!ctxMenuTaskId) return;
+  if (!taskCtxMenu.contains(e.target)) closeTaskCtxMenu();
+}, true);
+// Esc closes too (in capture so it runs before the global Esc handlers)
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && ctxMenuTaskId) {
+    closeTaskCtxMenu();
+    e.stopPropagation();
+  }
+}, true);
+// Right-clicking elsewhere closes the current menu (the new contextmenu will reopen)
+document.addEventListener('contextmenu', () => {
+  if (ctxMenuTaskId) closeTaskCtxMenu();
+}, true);
 
 // ============ TASK DETAIL OVERLAY ============
 // Click a task card → expand it into a modal with editable title, description,
