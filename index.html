@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v88</title>
+<title>Kanban Quest — v102</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -396,6 +396,53 @@
     border-color: var(--accent);
     background: rgba(212, 255, 58, 0.02);
   }
+
+  /* Priority slot — outcome 1. "First among equals": same shape and size as the
+     others, but with subtle treatment that draws the eye first. The styling
+     follows position (idx === 0), so dragging a card into slot 1 promotes it. */
+  .wv-outcome.is-priority {
+    /* Slightly stronger left edge — a 2px accent stripe instead of the
+       hairline 1px line-soft on the other slots */
+    border-left: 2px solid rgba(212, 255, 58, 0.5);
+    padding-left: 17px; /* compensate so text doesn't shift compared to others */
+    background: linear-gradient(180deg,
+      rgba(212, 255, 58, 0.03) 0%,
+      var(--bg-card) 80%);
+  }
+  .wv-outcome.is-priority.empty {
+    /* When the priority slot is empty, keep the dashed feel but slightly accent */
+    border-left: 2px dashed rgba(212, 255, 58, 0.4);
+    background: transparent;
+  }
+  /* The mono "01" number sits brighter on the priority card to reinforce position */
+  .wv-outcome.is-priority .wv-num {
+    color: var(--ink-dim);
+  }
+  /* Achieved priority outcome — keep the priority cue alongside the achieved gradient */
+  .wv-outcome.is-priority.achieved {
+    border-left: 2px solid var(--accent);
+  }
+
+  /* Drag visual feedback */
+  .wv-outcome.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+  }
+  .wv-outcome.drop-target {
+    border-color: var(--accent);
+    background: rgba(212, 255, 58, 0.06);
+    transform: translateY(-2px);
+  }
+  .wv-outcome[draggable="true"] {
+    cursor: grab;
+  }
+  .wv-outcome[draggable="true"]:active {
+    cursor: grabbing;
+  }
+  /* When the user is editing inline, override the grab cursor so it feels like a text field */
+  .wv-outcome:has(.wv-text[contenteditable="true"]) {
+    cursor: text;
+  }
   .wv-num {
     font-family: var(--mono);
     font-size: 9px;
@@ -427,19 +474,34 @@
     background: transparent;
     border: none;
     outline: none;
+    box-shadow: none;
+    -webkit-tap-highlight-color: transparent;
     cursor: text;
     transition: color 0.3s;
+  }
+  .wv-text:focus,
+  .wv-text:focus-visible {
+    outline: none;
+    box-shadow: none;
   }
   /* Edit state — no visual chrome at all. The text just becomes editable in
      place, no green highlight, no border, no background shift. Feels like
      writing directly on the card. The caret takes the accent color so it's
-     still clearly visible against the dark card. */
-  .wv-text[contenteditable="true"] {
+     still clearly visible against the dark card.
+     We aggressively kill every possible browser-default focus indicator
+     (outline, box-shadow ring, webkit focus ring) so the card and text
+     look like one seamless surface, not nested containers. */
+  .wv-text[contenteditable="true"],
+  .wv-text[contenteditable="true"]:focus,
+  .wv-text[contenteditable="true"]:focus-visible {
     background: transparent;
     box-shadow: none;
     padding: 0;
     margin: 0;
+    border: none;
     border-radius: 0;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
     text-align: left;
     caret-color: var(--accent);
   }
@@ -756,10 +818,19 @@
   .task-text:hover {
     background: rgba(255, 255, 255, 0.02);
   }
-  .task-text[contenteditable="true"] {
+  /* Edit state — no visual chrome at all. Just the blinking accent caret
+     signals "you're editing." Card surface stays unchanged. */
+  .task-text[contenteditable="true"],
+  .task-text[contenteditable="true"]:focus,
+  .task-text[contenteditable="true"]:focus-visible {
     outline: none;
-    background: rgba(212, 255, 58, 0.05);
-    box-shadow: inset 0 0 0 1px var(--accent);
+    background: transparent;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    padding-right: 8px;
+    -webkit-tap-highlight-color: transparent;
+    caret-color: var(--accent);
     cursor: text;
   }
   /* When editing a link-task title, lift the single-line clipping so the user
@@ -905,9 +976,12 @@
     margin-bottom: 10px;
     transition: background 0.2s;
   }
-  .task-desc:focus {
+  .task-desc:focus,
+  .task-desc:focus-visible {
     outline: none;
-    background: rgba(212, 255, 58, 0.06);
+    background: transparent;
+    box-shadow: none;
+    caret-color: var(--accent);
   }
   .task-desc::placeholder {
     color: var(--ink-faint);
@@ -1845,10 +1919,15 @@
   .quest-hero-title:hover {
     background: rgba(255, 255, 255, 0.02);
   }
-  .quest-hero-title[contenteditable="true"] {
+  .quest-hero-title[contenteditable="true"],
+  .quest-hero-title[contenteditable="true"]:focus,
+  .quest-hero-title[contenteditable="true"]:focus-visible {
     outline: none;
-    background: rgba(212, 255, 58, 0.05);
-    box-shadow: inset 0 0 0 1px var(--accent);
+    background: transparent;
+    box-shadow: none;
+    border: none;
+    -webkit-tap-highlight-color: transparent;
+    caret-color: var(--accent);
   }
 
   .quest-hero-desc {
@@ -1875,11 +1954,13 @@
   }
   .quest-hero-desc-edit {
     width: 100%;
-    background: rgba(212, 255, 58, 0.04);
+    background: transparent;
     border: none;
-    box-shadow: inset 0 0 0 1px var(--accent);
-    border-radius: 2px;
-    padding: 10px 12px;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 4px 6px;
+    margin-left: -6px;
+    margin-bottom: 18px;
     color: var(--ink);
     font-family: var(--serif);
     font-style: italic;
@@ -1887,9 +1968,14 @@
     line-height: 1.5;
     resize: vertical;
     min-height: 70px;
-    margin-bottom: 18px;
+    caret-color: var(--accent);
   }
-  .quest-hero-desc-edit:focus { outline: none; }
+  .quest-hero-desc-edit:focus,
+  .quest-hero-desc-edit:focus-visible {
+    outline: none;
+    background: transparent;
+    box-shadow: none;
+  }
 
   .quest-hero-meta {
     display: flex;
@@ -2671,6 +2757,26 @@
     color: var(--accent);
     font-weight: 500;
   }
+  /* Kind prefix — small label distinguishing focus check-ins from comments.
+     Focus = accent (it's a deliberate moment of progress).
+     Comment = ink-faint (it's an ambient note). */
+  .journal-source .kind-prefix {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    margin-right: 4px;
+  }
+  .journal-source .kind-prefix.kind-focus { color: var(--accent); }
+  .journal-source .kind-prefix.kind-comment { color: var(--ink-faint); }
+  .journal-entry.is-comment {
+    /* Slightly dimmer than focus entries so the eye picks out check-ins first */
+  }
+  .journal-entry.is-comment .journal-note {
+    color: var(--ink-dim);
+  }
   .journal-entry.is-outcome {
     background: linear-gradient(90deg,
       rgba(212, 255, 58, 0.05) 0%,
@@ -2774,18 +2880,33 @@
   .task-detail-modal {
     position: relative;
     z-index: 1;
-    width: 100%;
-    max-width: 640px;
-    max-height: calc(100vh - 64px);
+    /* Responsive sizing: use 80% of the viewport width up to a 900px cap.
+       Wider than that hurts prose readability (lines too long to scan
+       comfortably). On phones (≤700px) we lift the cap and go nearly
+       edge-to-edge via a separate breakpoint below. */
+    width: min(900px, 80vw);
+    max-width: 900px;
+    /* Vertical: 88% of viewport height up to 900px cap. Keeps the modal
+       feeling spacious on tall monitors without becoming overwhelming. */
+    max-height: min(900px, 88vh);
     background: var(--bg-card);
     border: 1px solid var(--line);
     border-radius: 6px;
-    padding: 28px 32px 24px;
+    padding: 32px 36px 28px;
     display: flex;
     flex-direction: column;
     gap: 16px;
     overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  }
+  /* Phones: drop the desktop sizing, use almost the whole viewport */
+  @media (max-width: 700px) {
+    .task-detail-modal {
+      width: 92vw;
+      max-width: 92vw;
+      max-height: 92vh;
+      padding: 24px 20px 20px;
+    }
   }
   .task-detail-close {
     position: absolute;
@@ -2837,8 +2958,11 @@
     border-bottom: 1px solid transparent;
     transition: border-bottom-color 0.2s;
   }
-  .task-detail-title:focus {
+  .task-detail-title:focus,
+  .task-detail-title:focus-visible {
+    outline: none;
     border-bottom-color: var(--line-soft);
+    caret-color: var(--accent);
   }
   .task-detail-desc {
     font-family: var(--serif);
@@ -2857,60 +2981,396 @@
     resize: vertical;
     transition: border-color 0.2s;
   }
-  .task-detail-desc:focus {
+  .task-detail-desc:focus,
+  .task-detail-desc:focus-visible {
+    outline: none;
     border-color: var(--line);
-    border-style: solid;
+    caret-color: var(--accent);
   }
   .task-detail-desc::placeholder {
     color: var(--ink-faint);
     font-style: italic;
   }
-  .task-detail-images-header {
+  /* ============ ACTIVITY THREAD (comments + focus check-ins) ============ */
+  /* A unified log per task: every comment + every focus check-in lives here,
+     sorted newest-first. The composer at the top accepts new comments. */
+  .task-detail-activity {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .task-detail-activity-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-top: 4px;
   }
-  .task-detail-images-label {
+  .task-detail-activity-label {
     font-family: var(--mono);
     font-size: 10px;
     letter-spacing: 0.25em;
     text-transform: uppercase;
     color: var(--ink-faint);
   }
-  .task-detail-images-hint {
+  .task-detail-activity-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--ink-dim);
+  }
+  /* Composer — input at the top of the thread for adding a new comment */
+  .activity-composer {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .activity-composer textarea {
+    flex: 1;
+    min-height: 38px;
+    max-height: 200px;
+    padding: 10px 12px;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 14px;
+    line-height: 1.5;
+    /* Manual resize disabled — auto-grow via JS handles height as you type */
+    resize: none;
+    overflow-y: auto;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .activity-composer textarea:focus,
+  .activity-composer textarea:focus-visible {
+    outline: none;
+    border-color: var(--ink-faint);
+    caret-color: var(--accent);
+  }
+  .activity-composer textarea::placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+  .activity-composer-submit {
+    padding: 9px 14px;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    align-self: flex-start;
+  }
+  .activity-composer-submit:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(212, 255, 58, 0.05);
+  }
+  .activity-composer-submit:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  /* Thread of entries — newest first */
+  .activity-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+  }
+  /* Single-line activity row: [dot] note...                       Today 14:32
+     Color of the dot encodes the entry kind (focus = chartreuse, comment = grey).
+     Note text is single-line with ellipsis truncation; full text on hover.
+     Per-entry opacity fade applied inline (newest 100%, oldest ~28%). */
+  .activity-entry {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 2px;
+    transition: background 0.15s;
+    cursor: default;
+  }
+  .activity-entry:hover {
+    background: rgba(255, 255, 255, 0.025);
+  }
+  /* The kind dot — color-only signal; no text label */
+  .activity-entry-dot {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+  }
+  .activity-entry.kind-focus .activity-entry-dot {
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(212, 255, 58, 0.35);
+  }
+  .activity-entry.kind-comment .activity-entry-dot {
+    background: var(--ink-faint);
+  }
+  /* Note text — flexes to fill, clipped with ellipsis if it overflows */
+  .activity-entry-note {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--serif);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Timestamp — pinned to the right, doesn't shrink */
+  .activity-entry-time {
+    flex-shrink: 0;
     font-family: var(--mono);
     font-size: 9px;
     letter-spacing: 0.15em;
     color: var(--ink-faint);
-    opacity: 0.6;
+    white-space: nowrap;
   }
+  /* Empty state */
+  .activity-empty {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-faint);
+    padding: 8px 4px;
+  }
+
+  /* Top row: title/desc on the left, images cluster tucked to the right.
+     Mirrors the Quest hero layout pattern so the image attachments feel
+     like a corner indicator rather than a competing content block. */
+  .task-detail-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .task-detail-top-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .task-detail-images-aside {
+    /* Compact corner cluster — narrower than the Quest version because the
+       modal itself is constrained (~900px max). */
+    width: 160px;
+    flex-shrink: 0;
+  }
+  .task-detail-images-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .task-detail-images-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  /* Minimal "+" button in the corner header */
+  .task-detail-images-add-mini {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .task-detail-images-add-mini:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(212, 255, 58, 0.05);
+  }
+
+  /* ============ QUEST IMAGES ============ */
+  /* Page-level image attachments for the Quest, between the hero and the
+     objective columns. Same visual language as task-detail images but
+     scaled for the broader page surface. */
+  /* Top row: hero on the left, images tucked to the right corner.
+     The hero flexes to fill remaining width; images cluster has a fixed
+     compact width so the kanban below remains the visual focus. */
+  .quest-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  .quest-top .quest-hero {
+    flex: 1;
+    min-width: 0;
+    /* hero already has its own margin-bottom — neutralize when inside quest-top */
+    margin-bottom: 0;
+  }
+  .quest-images-section {
+    /* Compact panel docked to the right edge of the top row.
+       Transparent and borderless — images sit directly on the page surface,
+       not in a contained box. Only the thumbnails themselves carry visual weight. */
+    width: 260px;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+  .quest-images-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .quest-images-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .quest-images-add {
+    /* Minimal + button instead of a verbose "+ IMAGE" pill */
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .quest-images-add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(212, 255, 58, 0.05);
+  }
+  .quest-images-grid {
+    display: grid;
+    /* 3 thumbs per row in the 260px panel — each ~70px square */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    min-height: 0;
+    /* Cap the visible height so a Quest with many images doesn't push the
+       kanban down; users scroll inside the panel for more. */
+    max-height: 240px;
+    overflow-y: auto;
+    /* No padding, no border — thumbnails sit directly on the page. The
+       drop-target state below adds a subtle dashed glow only when files
+       are being dragged in. */
+    padding: 0;
+    border: none;
+    border-radius: 3px;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  /* Only show the drop-zone affordance when files are actively being dragged */
+  .quest-images-grid.drop-target {
+    background: rgba(212, 255, 58, 0.04);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  /* No empty-state pseudo-element — when there are no images, the space is
+     simply empty. Keeps the section truly invisible at rest. */
+  .quest-images-grid.empty {
+    min-height: 8px;
+  }
+  .quest-image {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--bg-soft);
+    border: 1px solid var(--line-soft);
+    cursor: zoom-in;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .quest-image:hover {
+    border-color: var(--line);
+    transform: scale(1.04);
+  }
+  .quest-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .quest-image-del {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: rgba(0, 0, 0, 0.75);
+    color: var(--ink);
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s;
+  }
+  .quest-image:hover .quest-image-del { opacity: 1; }
+  .quest-image-del:hover {
+    background: rgba(248, 113, 113, 0.85);
+  }
+  /* On narrow screens, stack hero above images (full width each)
+     so the hero doesn't get squeezed and images can still be useful. */
+  @media (max-width: 900px) {
+    .quest-top {
+      flex-direction: column;
+    }
+    .quest-images-section {
+      width: 100%;
+    }
+    .quest-images-grid {
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      max-height: 200px;
+    }
+  }
+
   .task-detail-images {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 8px;
-    min-height: 80px;
-    padding: 12px;
-    border: 1px dashed var(--line-soft);
+    /* 2 thumbs per row in the 160px aside */
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    min-height: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    /* Seamless — no container background or border. Thumbnails sit directly
+       on the modal surface, matching the Quest images treatment. */
+    padding: 0;
+    border: none;
     border-radius: 3px;
-    transition: border-color 0.2s, background 0.2s;
+    transition: background 0.2s, box-shadow 0.2s;
   }
+  /* Drop-zone feedback only when files are being dragged in */
   .task-detail-images.drop-target {
-    border-color: var(--accent);
     background: rgba(212, 255, 58, 0.04);
+    box-shadow: 0 0 0 1px var(--accent);
   }
-  .task-detail-images.empty::after {
-    content: 'Paste an image or drop one here';
-    grid-column: 1 / -1;
-    text-align: center;
-    align-self: center;
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    color: var(--ink-faint);
-    text-transform: uppercase;
-    opacity: 0.5;
-    padding: 16px;
+  /* No empty-state text — when there are no images, the space is simply empty.
+     The "+" button in the header invites adding the first one. */
+  .task-detail-images.empty {
+    min-height: 8px;
   }
   .task-detail-image {
     position: relative;
@@ -2924,7 +3384,7 @@
   }
   .task-detail-image:hover {
     border-color: var(--line);
-    transform: scale(1.02);
+    transform: scale(1.04);
   }
   .task-detail-image img {
     width: 100%;
@@ -3025,6 +3485,11 @@
     object-fit: contain;
     border-radius: 4px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    /* Smooth fade when changing images via scroll/arrow navigation */
+    transition: opacity 0.18s ease;
+  }
+  .task-detail-lightbox-img.is-fading {
+    opacity: 0;
   }
   .task-detail-lightbox-close {
     position: absolute;
@@ -3044,8 +3509,69 @@
   .task-detail-lightbox-close:hover {
     background: rgba(255, 255, 255, 0.1);
   }
+  /* Counter — "2 / 7" indicator at the top-center of the lightbox.
+     Hidden when there's only one image. */
+  .task-detail-lightbox-counter {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(0, 0, 0, 0.4);
+    padding: 6px 14px;
+    border-radius: 12px;
+    pointer-events: none;
+    user-select: none;
+  }
+  .task-detail-lightbox-counter:empty,
+  .task-detail-lightbox-counter.single { display: none; }
+  /* Prev / Next arrows on left and right sides. Click or use ‹ › keys. */
+  .task-detail-lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 64px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: var(--ink);
+    font-size: 28px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+    z-index: 1;
+  }
+  .task-detail-lightbox-nav.prev { left: 24px; }
+  .task-detail-lightbox-nav.next { right: 24px; }
+  .task-detail-lightbox-nav:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+  /* Hidden when at the start/end of the list, or when only one image exists */
+  .task-detail-lightbox-nav:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
 
-  /* Mobile: take more of the screen */
+  /* Mobile: take more of the screen + stack the corner image cluster
+     below the title/description since horizontal room is tight. */
+  @media (max-width: 700px) {
+    .task-detail-top {
+      flex-direction: column;
+    }
+    .task-detail-images-aside {
+      width: 100%;
+    }
+    .task-detail-images {
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      max-height: 180px;
+    }
+  }
   @media (max-width: 600px) {
     .task-detail-overlay { padding: 12px; }
     .task-detail-modal {
@@ -3053,7 +3579,6 @@
       max-height: calc(100vh - 24px);
     }
     .task-detail-title { font-size: 22px; }
-    .task-detail-images { grid-template-columns: repeat(2, 1fr); }
   }
 
   .focus-overlay {
@@ -3608,7 +4133,7 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v88</span>
+      <span class="eyebrow">— Kanban / v102</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <div class="level-block">
@@ -3729,28 +4254,44 @@
     </div>
 
     <div class="quest-container" id="questContainer">
-      <div class="quest-hero" id="questHero">
-        <button class="quest-hero-delete" id="questHeroDelete">× delete Quest</button>
-        <div class="quest-hero-eyebrow">
-          Quest
-          <span class="quest-hero-ready-tag">objectives complete</span>
-        </div>
-        <div class="quest-hero-title" id="questHeroTitle"></div>
-        <div class="quest-hero-desc" id="questHeroDesc"></div>
-        <div class="quest-hero-meta">
-          <div class="quest-hero-meta-item">
-            <span class="quest-hero-meta-label">Pain</span>
-            <div class="pain-pips" id="questHeroPain"></div>
+      <!-- Top row: hero takes the main space, images tucked to the right.
+           Collapses to stacked layout on narrow screens. -->
+      <div class="quest-top">
+        <div class="quest-hero" id="questHero">
+          <button class="quest-hero-delete" id="questHeroDelete">× delete Quest</button>
+          <div class="quest-hero-eyebrow">
+            Quest
+            <span class="quest-hero-ready-tag">objectives complete</span>
           </div>
-          <div class="quest-progress">
-            <div class="quest-progress-meta">
-              <span>Objectives</span>
-              <span id="questHeroProgressText">0 / 0 complete</span>
+          <div class="quest-hero-title" id="questHeroTitle"></div>
+          <div class="quest-hero-desc" id="questHeroDesc"></div>
+          <div class="quest-hero-meta">
+            <div class="quest-hero-meta-item">
+              <span class="quest-hero-meta-label">Pain</span>
+              <div class="pain-pips" id="questHeroPain"></div>
             </div>
-            <div class="quest-progress-bar"><div class="quest-progress-fill" id="questHeroProgressFill" style="width:0%"></div></div>
+            <div class="quest-progress">
+              <div class="quest-progress-meta">
+                <span>Objectives</span>
+                <span id="questHeroProgressText">0 / 0 complete</span>
+              </div>
+              <div class="quest-progress-bar"><div class="quest-progress-fill" id="questHeroProgressFill" style="width:0%"></div></div>
+            </div>
+            <button class="quest-complete-btn" id="questCompleteBtn">Mark Quest done</button>
           </div>
-          <button class="quest-complete-btn" id="questCompleteBtn">Mark Quest done</button>
         </div>
+
+        <!-- Quest Images — compact corner cluster. Paste, drop, or +image to attach. -->
+        <aside class="quest-images-section" id="questImagesSection">
+          <div class="quest-images-header">
+            <span class="quest-images-label">Images</span>
+            <button class="quest-images-add" id="questImagesAdd" title="Add image">+</button>
+          </div>
+          <div class="quest-images-grid" id="questImagesGrid">
+            <!-- Thumbnails appended here -->
+          </div>
+          <input type="file" id="questImagesFilePicker" accept="image/*" multiple style="display:none">
+        </aside>
       </div>
 
       <div class="board" id="questBoard">
@@ -3776,6 +4317,13 @@
             <span class="column-count" data-quest-count="doing">0</span>
           </div>
           <div class="column-body" data-quest-body="doing"></div>
+        </div>
+        <div class="column is-parked" data-quest-col="blocked">
+          <div class="column-header">
+            <span class="column-title"><span class="parked-icon" aria-hidden="true">⊘</span> Blocked</span>
+            <span class="column-count" data-quest-count="blocked">0</span>
+          </div>
+          <div class="column-body" data-quest-body="blocked"></div>
         </div>
         <div class="column" data-quest-col="done">
           <div class="column-header">
@@ -3842,7 +4390,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v88</span>
+      <span class="footer-version">v102</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
@@ -4075,30 +4623,68 @@
   <div class="task-detail-backdrop" id="taskDetailBackdrop"></div>
   <div class="task-detail-modal" id="taskDetailModal">
     <button class="task-detail-close" id="taskDetailClose" aria-label="Close">×</button>
-    <div class="task-detail-eyebrow" id="taskDetailEyebrow">Task</div>
-    <input type="text" class="task-detail-title" id="taskDetailTitle" placeholder="Untitled" maxlength="200">
-    <textarea class="task-detail-desc" id="taskDetailDesc" placeholder="Add notes, context, anything that helps you remember…"></textarea>
 
-    <div class="task-detail-images-header">
-      <span class="task-detail-images-label">Images</span>
-      <span class="task-detail-images-hint">Paste with Cmd+V · or drop files here</span>
+    <!-- Top section: title + description on the left, compact images cluster
+         on the right. Mirrors the Quest hero layout pattern. -->
+    <div class="task-detail-top">
+      <div class="task-detail-top-main">
+        <div class="task-detail-eyebrow" id="taskDetailEyebrow">Task</div>
+        <input type="text" class="task-detail-title" id="taskDetailTitle" placeholder="Untitled" maxlength="200">
+        <textarea class="task-detail-desc" id="taskDetailDesc" placeholder="Add notes, context, anything that helps you remember…"></textarea>
+      </div>
+      <!-- Compact image cluster — corner attachment indicator.
+           Click any thumb to expand. Paste/drop anywhere on the modal. -->
+      <aside class="task-detail-images-aside">
+        <div class="task-detail-images-header">
+          <span class="task-detail-images-label">Images</span>
+          <button class="task-detail-images-add-mini" id="taskDetailImagesAddMini" title="Add image">+</button>
+        </div>
+        <div class="task-detail-images" id="taskDetailImages">
+          <!-- Thumbnails appended here -->
+        </div>
+      </aside>
     </div>
-    <div class="task-detail-images" id="taskDetailImages">
-      <!-- Thumbnails appended here -->
+
+    <!-- Activity thread — unified comments + focus check-ins, newest first.
+         Each entry is timestamped; manual comments are added via the composer. -->
+    <div class="task-detail-activity">
+      <div class="task-detail-activity-header">
+        <span class="task-detail-activity-label">Activity</span>
+        <span class="task-detail-activity-count" id="taskDetailActivityCount"></span>
+      </div>
+      <div class="activity-composer">
+        <textarea
+          class="activity-composer-input"
+          id="taskDetailCommentInput"
+          placeholder="Add a comment, status update, or note…"
+          rows="1"></textarea>
+        <button class="activity-composer-submit" id="taskDetailCommentSubmit" disabled>Post</button>
+      </div>
+      <div class="activity-thread" id="taskDetailActivityThread">
+        <!-- Entries rendered here -->
+      </div>
     </div>
+
     <input type="file" id="taskDetailFilePicker" accept="image/*" multiple style="display:none">
 
     <div class="task-detail-footer">
-      <button class="task-detail-add-image" id="taskDetailAddImage">+ image</button>
       <span class="task-detail-tip">Esc to close</span>
     </div>
   </div>
+</div>
 
-  <!-- Lightbox for full-size image preview -->
-  <div class="task-detail-lightbox" id="taskDetailLightbox" style="display:none">
-    <button class="task-detail-lightbox-close" id="taskDetailLightboxClose" aria-label="Close">×</button>
-    <img class="task-detail-lightbox-img" id="taskDetailLightboxImg" alt="">
-  </div>
+<!-- Lightbox for full-size image preview.
+     Lives at body-level (outside taskDetailOverlay) so it can be opened from
+     anywhere — Quest page, task detail modal, future surfaces — without being
+     hidden by a parent's display:none.
+     Supports scroll-to-navigate, keyboard arrows, and click arrows when there
+     are multiple images in the attachment list. -->
+<div class="task-detail-lightbox" id="taskDetailLightbox" style="display:none">
+  <button class="task-detail-lightbox-close" id="taskDetailLightboxClose" aria-label="Close">×</button>
+  <div class="task-detail-lightbox-counter" id="taskDetailLightboxCounter"></div>
+  <button class="task-detail-lightbox-nav prev" id="taskDetailLightboxPrev" aria-label="Previous image">‹</button>
+  <img class="task-detail-lightbox-img" id="taskDetailLightboxImg" alt="">
+  <button class="task-detail-lightbox-nav next" id="taskDetailLightboxNext" aria-label="Next image">›</button>
 </div>
 
 <!-- Focus mode overlay -->
@@ -4563,6 +5149,16 @@ async function load() {
     if (t.col === 'done' && t.awarded === undefined) {
       t.awarded = true;
     }
+    // Migration (v91): unify focusLog into a generic activity stream.
+    // Legacy entries (just {time, note}) are tagged kind:'focus' so they
+    // continue to behave identically. New entries can be kind:'comment'
+    // for manual updates added via the task detail overlay.
+    if (Array.isArray(t.focusLog)) {
+      t.focusLog.forEach(entry => {
+        if (!entry.kind) entry.kind = 'focus';
+        if (!entry.id) entry.id = 'e_' + uid();
+      });
+    }
   });
   // Weekly Vision: ensure something exists for the current week (rollover if needed)
   rolloverVisionIfNeeded();
@@ -4600,10 +5196,53 @@ function renderWeeklyVision() {
     const card = document.createElement('div');
     card.className = 'wv-outcome';
     card.dataset.outcomeId = outcome.id;
+    card.dataset.outcomeIdx = String(idx);
     const hasText = !!(outcome.text && outcome.text.trim());
     if (!hasText) card.classList.add('empty');
     if (hasText) card.classList.add('has-text');
     if (outcome.achievedAt) card.classList.add('achieved');
+    // The first slot gets a subtle priority treatment — "first among equals".
+    // Styling follows position, not the outcome itself: when you drag a card
+    // into slot 1, it gains the priority look.
+    if (idx === 0) card.classList.add('is-priority');
+
+    // Drag handle: the card itself is draggable, but only when not editing
+    // text inline (contenteditable blocks dragstart natively, so we only
+    // need to ensure draggable is true at the card level).
+    card.draggable = true;
+    card.addEventListener('dragstart', (e) => {
+      // Don't drag if the user is editing text inside this card
+      const editingChild = card.querySelector('[contenteditable="true"]');
+      if (editingChild) { e.preventDefault(); return; }
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', 'wv-outcome:' + outcome.id);
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      // Clear any lingering drop-target classes on siblings
+      container.querySelectorAll('.wv-outcome').forEach(el => el.classList.remove('drop-target'));
+    });
+    card.addEventListener('dragover', (e) => {
+      // Only accept drops from other outcomes, not arbitrary content
+      const data = e.dataTransfer.getData('text/plain') || '';
+      // (data is empty during dragover in most browsers; we check on drop instead)
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      card.classList.add('drop-target');
+    });
+    card.addEventListener('dragleave', (e) => {
+      if (!card.contains(e.relatedTarget)) card.classList.remove('drop-target');
+    });
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drop-target');
+      const payload = e.dataTransfer.getData('text/plain') || '';
+      if (!payload.startsWith('wv-outcome:')) return;
+      const draggedId = payload.slice('wv-outcome:'.length);
+      if (draggedId === outcome.id) return; // dropped on self — no-op
+      reorderOutcome(draggedId, idx);
+    });
 
     // Number prefix (01, 02, 03)
     const num = document.createElement('span');
@@ -4611,10 +5250,12 @@ function renderWeeklyVision() {
     num.textContent = String(idx + 1).padStart(2, '0');
     card.appendChild(num);
 
-    // Text — contenteditable for inline editing
+    // Text — contenteditable for inline editing.
+    // When empty, show "Outcome 1" / "Outcome 2" / "Outcome 3" as the placeholder
+    // so each slot reads as a named, ordered priority.
     const text = document.createElement('div');
     text.className = 'wv-text' + (hasText ? '' : ' wv-text-empty');
-    text.textContent = hasText ? outcome.text : 'Click to set outcome…';
+    text.textContent = hasText ? outcome.text : `Outcome ${idx + 1}`;
     card.appendChild(text);
 
     // Wire text editing
@@ -4706,6 +5347,22 @@ function toggleOutcomeAchieved(outcomeId, cardEl) {
     // Re-render after a tiny delay so the flash plays smoothly first
     setTimeout(() => renderWeeklyVision(), 60);
   }
+}
+
+// Move an outcome to a new position by dragging.
+// Insert-at-position semantics: the dragged outcome lands at `toIdx`, and any
+// outcomes between its old and new position shift to fill the gap.
+// This lets the user promote an outcome to higher priority by dragging it
+// closer to position 0 (the "first among equals" priority slot).
+function reorderOutcome(draggedId, toIdx) {
+  if (!state.weeklyVision) return;
+  const outcomes = state.weeklyVision.outcomes;
+  const fromIdx = outcomes.findIndex(o => o.id === draggedId);
+  if (fromIdx < 0 || fromIdx === toIdx) return;
+  const [moved] = outcomes.splice(fromIdx, 1);
+  outcomes.splice(toIdx, 0, moved);
+  save();
+  renderWeeklyVision();
 }
 
 // Confetti particle burst — modeled after the existing handleCompletion juice
@@ -5634,6 +6291,9 @@ function renderQuestView() {
   // Breadcrumb
   document.getElementById('breadcrumbCurrent').textContent = quest.text;
 
+  // Render the Quest's page-level image attachments (paste/drop/+image)
+  renderQuestImages();
+
   // --- TITLE: fresh element each render ---
   const titleParent = document.getElementById('questHeroTitle').parentNode;
   const oldTitle = document.getElementById('questHeroTitle');
@@ -5712,7 +6372,7 @@ function renderQuestView() {
   completeBtn.style.opacity = quest.col === 'done' ? '0.5' : '1';
 
   // Populate Quest columns
-  ['todo','doing','done'].forEach(col => {
+  ['todo','doing','blocked','done'].forEach(col => {
     const body = document.querySelector(`[data-quest-body="${col}"]`);
     const list = children.filter(t => t.col === col && passesPainFilter(t));
     document.querySelector(`[data-quest-count="${col}"]`).textContent = list.length;
@@ -5721,6 +6381,11 @@ function renderQuestView() {
       const e = document.createElement('div');
       e.className = 'empty';
       e.textContent = 'drag here to complete';
+      body.appendChild(e);
+    } else if (list.length === 0 && col === 'blocked') {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'waiting on something — park it here';
       body.appendChild(e);
     }
     list.forEach(t => body.appendChild(renderTask(t)));
@@ -6002,9 +6667,178 @@ function openTaskDetail(taskId) {
   overlay.setAttribute('aria-hidden', 'false');
   // Render existing image thumbnails (async — they load from IndexedDB)
   renderDetailImages();
+  // Render the activity thread (comments + focus check-ins, newest first)
+  renderDetailActivity();
+  // Reset the composer input on every open
+  const composerInput = document.getElementById('taskDetailCommentInput');
+  if (composerInput) {
+    composerInput.value = '';
+    composerInput.style.height = '';
+  }
+  updateComposerSubmitState();
   // Focus the title after a tick so it doesn't fight with the open animation
   setTimeout(() => titleEl.focus(), 50);
 }
+
+// Render the activity thread for the currently-open task.
+// Merges focus check-ins and manual comments, sorted newest first.
+function renderDetailActivity() {
+  const thread = document.getElementById('taskDetailActivityThread');
+  const countEl = document.getElementById('taskDetailActivityCount');
+  if (!thread || !detailTaskId) return;
+  const t = state.tasks.find(x => x.id === detailTaskId);
+  if (!t) return;
+  thread.innerHTML = '';
+  const entries = Array.isArray(t.focusLog) ? [...t.focusLog] : [];
+  // Newest first
+  entries.sort((a, b) => (b.time || 0) - (a.time || 0));
+  // Counter shows the TOTAL count, even though only the latest 5 render on
+  // the card. The full log remains visible in the Journal.
+  if (countEl) {
+    countEl.textContent = entries.length > 0 ? `${entries.length}` : '';
+  }
+  if (entries.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'activity-empty';
+    empty.textContent = 'No activity yet — add the first comment above.';
+    thread.appendChild(empty);
+    return;
+  }
+  // Only show the 5 most recent. Older entries stay in the Journal feed.
+  const visible = entries.slice(0, 5);
+  // Per-entry opacity gradient — newest at 100%, fading toward irrelevance
+  // for older rows. The slope is gentle so the top three feel clearly present
+  // and the bottom two visibly drop off.
+  const fadeStops = [1.0, 0.85, 0.65, 0.45, 0.28];
+  visible.forEach((entry, idx) => {
+    const kind = entry.kind || 'focus';
+    const row = document.createElement('div');
+    row.className = `activity-entry kind-${kind}`;
+    row.dataset.entryId = entry.id || '';
+    row.style.opacity = String(fadeStops[idx] ?? 0.28);
+
+    // Colored kind dot — chartreuse for focus, faint grey for comment.
+    // No text label; color encodes the type.
+    const dot = document.createElement('span');
+    dot.className = 'activity-entry-dot';
+    dot.title = kind === 'focus' ? 'Focus check-in' : 'Comment';
+
+    // Note text — single line with ellipsis truncation
+    const note = document.createElement('span');
+    note.className = 'activity-entry-note';
+    note.textContent = entry.note;
+    // Full text on hover for desktop, since the visible line is clipped
+    note.title = entry.note;
+
+    // Timestamp — pushed to the right edge by flex layout
+    const time = document.createElement('span');
+    time.className = 'activity-entry-time';
+    time.textContent = journalTimeLabel(entry.time);
+
+    row.appendChild(dot);
+    row.appendChild(note);
+    row.appendChild(time);
+
+    // Right-click → delete this entry
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openActivityEntryMenu(t.id, entry.id, e.clientX, e.clientY);
+    });
+    thread.appendChild(row);
+  });
+}
+
+// Composer state — Post button is disabled until there's text
+function updateComposerSubmitState() {
+  const input = document.getElementById('taskDetailCommentInput');
+  const btn = document.getElementById('taskDetailCommentSubmit');
+  if (!input || !btn) return;
+  btn.disabled = !input.value.trim();
+}
+
+// Submit a new comment to the currently-open task's activity log
+function submitComment() {
+  const input = document.getElementById('taskDetailCommentInput');
+  if (!input || !detailTaskId) return;
+  const text = input.value.trim();
+  if (!text) return;
+  const t = state.tasks.find(x => x.id === detailTaskId);
+  if (!t) return;
+  if (!Array.isArray(t.focusLog)) t.focusLog = [];
+  t.focusLog.push({
+    id: 'e_' + uid(),
+    time: nowMs(),
+    note: text,
+    kind: 'comment',
+  });
+  input.value = '';
+  // Reset auto-grown height back to its natural single-row size after submit
+  input.style.height = '';
+  updateComposerSubmitState();
+  save();
+  renderDetailActivity();
+  // Also refresh the Journal so the new entry appears there too
+  if (currentView === 'journal') renderJournal();
+}
+
+// Right-click context menu on a single activity entry — currently just "Delete"
+let activityCtxOpen = false;
+function openActivityEntryMenu(taskId, entryId, x, y) {
+  // Reuse the global task context menu element for styling consistency
+  const menu = document.getElementById('taskCtxMenu');
+  if (!menu) return;
+  menu.innerHTML = '';
+  const row = document.createElement('div');
+  row.className = 'task-ctx-item danger';
+  const icon = document.createElement('span');
+  icon.className = 'task-ctx-icon';
+  icon.textContent = '×';
+  const label = document.createElement('span');
+  label.textContent = 'Delete entry';
+  row.appendChild(icon);
+  row.appendChild(label);
+  row.addEventListener('click', () => {
+    closeActivityEntryMenu();
+    const t = state.tasks.find(x => x.id === taskId);
+    if (!t || !Array.isArray(t.focusLog)) return;
+    t.focusLog = t.focusLog.filter(e => e.id !== entryId);
+    save();
+    renderDetailActivity();
+    if (currentView === 'journal') renderJournal();
+  });
+  menu.appendChild(row);
+  // Position
+  menu.style.display = 'block';
+  menu.style.visibility = 'hidden';
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+  const rect = menu.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  menu.style.left = Math.max(8, Math.min(x, vw - rect.width - 8)) + 'px';
+  menu.style.top  = Math.max(8, Math.min(y, vh - rect.height - 8)) + 'px';
+  menu.style.visibility = 'visible';
+  activityCtxOpen = true;
+}
+function closeActivityEntryMenu() {
+  if (!activityCtxOpen) return;
+  activityCtxOpen = false;
+  const menu = document.getElementById('taskCtxMenu');
+  if (menu) menu.style.display = 'none';
+}
+// Click outside / Esc closes
+document.addEventListener('click', (e) => {
+  if (!activityCtxOpen) return;
+  const menu = document.getElementById('taskCtxMenu');
+  if (menu && !menu.contains(e.target)) closeActivityEntryMenu();
+}, true);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && activityCtxOpen) {
+    closeActivityEntryMenu();
+    e.stopPropagation();
+  }
+}, true);
 
 function closeTaskDetail() {
   // Commit any pending text edits before closing
@@ -6058,7 +6892,8 @@ async function renderDetailImages() {
       await removeAttachment(id);
     });
     tile.appendChild(del);
-    tile.addEventListener('click', () => openLightbox(id));
+    // Capture the full attachments array so the lightbox can navigate through them
+    tile.addEventListener('click', () => openLightbox(id, attachments));
     grid.appendChild(tile);
     // Load image asynchronously; log clearly if it fails so we can diagnose
     getImageUrl(id)
@@ -6124,18 +6959,172 @@ async function removeAttachment(imageId) {
   try { await idbDelete(imageId); } catch (e) { /* swallow */ }
 }
 
-function openLightbox(imageId) {
-  const lightbox = document.getElementById('taskDetailLightbox');
-  const img = document.getElementById('taskDetailLightboxImg');
-  getImageUrl(imageId).then(url => {
-    if (url) {
-      img.src = url;
-      lightbox.style.display = 'flex';
-    }
-  });
+// ============ QUEST IMAGES ============
+// Page-level images attached to a Quest, shown between the hero and the
+// objective columns. Reuses the same IndexedDB store and helpers as
+// task-detail images; only the rendering surface differs.
+
+// The Quest currently being viewed has its id stored in `currentQuestId`
+// (set when the Quest view opens). All Quest-image operations target that id.
+
+async function renderQuestImages() {
+  const grid = document.getElementById('questImagesGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  if (!currentQuestId) return;
+  const q = state.tasks.find(x => x.id === currentQuestId);
+  if (!q) return;
+  const attachments = q.attachments || [];
+  grid.classList.toggle('empty', attachments.length === 0);
+  for (const id of attachments) {
+    const tile = document.createElement('div');
+    tile.className = 'quest-image';
+    tile.dataset.imageId = id;
+    const img = document.createElement('img');
+    img.alt = '';
+    img.addEventListener('error', () => {
+      tile.classList.add('image-failed');
+      console.warn('Quest image failed to display for id:', id);
+    });
+    tile.appendChild(img);
+    const del = document.createElement('button');
+    del.className = 'quest-image-del';
+    del.textContent = '×';
+    del.title = 'Delete image';
+    del.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await removeQuestAttachment(id);
+    });
+    tile.appendChild(del);
+    // Reuse the existing lightbox for full-size preview, passing the full
+    // attachments array so scroll/arrow navigation walks through the gallery
+    tile.addEventListener('click', () => openLightbox(id, attachments));
+    grid.appendChild(tile);
+    getImageUrl(id)
+      .then(url => {
+        if (url) {
+          img.src = url;
+        } else {
+          console.warn('Quest image blob not found in IndexedDB for id:', id);
+          tile.classList.add('image-failed');
+        }
+      })
+      .catch(err => {
+        console.error('Quest image fetch error for id:', id, err);
+        tile.classList.add('image-failed');
+      });
+  }
 }
+
+async function addQuestImageBlob(blob) {
+  if (!currentQuestId) {
+    console.warn('addQuestImageBlob called with no active Quest');
+    return;
+  }
+  if (!blob || !blob.type || !blob.type.startsWith('image/')) {
+    console.warn('addQuestImageBlob rejected: not an image blob', blob);
+    return;
+  }
+  const q = state.tasks.find(x => x.id === currentQuestId);
+  if (!q) {
+    console.warn('addQuestImageBlob: Quest not found');
+    return;
+  }
+  const id = 'img_' + uid();
+  try {
+    await idbPut(id, blob);
+    const check = await idbGet(id);
+    if (!check) {
+      console.error('Quest image stored but immediate read returned null. ID:', id);
+      alert('Image failed to save. Your browser may have IndexedDB disabled or storage may be full.');
+      return;
+    }
+  } catch (err) {
+    console.error('Failed to store Quest image:', err);
+    alert('Image storage failed: ' + (err.message || err));
+    return;
+  }
+  if (!q.attachments) q.attachments = [];
+  q.attachments.push(id);
+  save();
+  renderQuestImages();
+}
+
+async function removeQuestAttachment(imageId) {
+  if (!currentQuestId) return;
+  const q = state.tasks.find(x => x.id === currentQuestId);
+  if (!q || !q.attachments) return;
+  q.attachments = q.attachments.filter(id => id !== imageId);
+  save();
+  renderQuestImages();
+  revokeImageUrl(imageId);
+  try { await idbDelete(imageId); } catch (e) { /* swallow */ }
+}
+
+// ============ LIGHTBOX (gallery) ============
+// State for the currently-open lightbox session. Captured at open time so
+// re-renders of the underlying tile list don't affect navigation order.
+let lightboxList = [];     // Array of image IDs in display order
+let lightboxIndex = 0;     // Current position within lightboxList
+let lightboxLastNavAt = 0; // Timestamp of last scroll-navigation, for throttling
+
+function openLightbox(imageId, list) {
+  // Capture the surrounding image list so scroll/arrow navigation can step through.
+  // If no list is provided (legacy single-image opens), fall back to just this id.
+  lightboxList = Array.isArray(list) && list.length > 0 ? list.slice() : [imageId];
+  lightboxIndex = Math.max(0, lightboxList.indexOf(imageId));
+  if (lightboxIndex < 0) lightboxIndex = 0;
+  showLightboxImage();
+  document.getElementById('taskDetailLightbox').style.display = 'flex';
+}
+
+function showLightboxImage() {
+  const img = document.getElementById('taskDetailLightboxImg');
+  const counter = document.getElementById('taskDetailLightboxCounter');
+  const prevBtn = document.getElementById('taskDetailLightboxPrev');
+  const nextBtn = document.getElementById('taskDetailLightboxNext');
+  const id = lightboxList[lightboxIndex];
+  if (!id) return;
+  // Fade out, swap, fade in for a smooth transition
+  img.classList.add('is-fading');
+  getImageUrl(id).then(url => {
+    if (!url) {
+      img.classList.remove('is-fading');
+      return;
+    }
+    // Tiny delay so the fade-out is perceptible before the new image appears
+    setTimeout(() => {
+      img.src = url;
+      img.classList.remove('is-fading');
+    }, 60);
+  });
+  // Update counter and nav button state
+  if (lightboxList.length > 1) {
+    counter.textContent = `${lightboxIndex + 1} / ${lightboxList.length}`;
+    counter.classList.remove('single');
+  } else {
+    counter.textContent = '';
+    counter.classList.add('single');
+  }
+  prevBtn.disabled = lightboxIndex <= 0;
+  nextBtn.disabled = lightboxIndex >= lightboxList.length - 1;
+}
+
+function lightboxNext() {
+  if (lightboxIndex >= lightboxList.length - 1) return;
+  lightboxIndex++;
+  showLightboxImage();
+}
+function lightboxPrev() {
+  if (lightboxIndex <= 0) return;
+  lightboxIndex--;
+  showLightboxImage();
+}
+
 function closeLightbox() {
   document.getElementById('taskDetailLightbox').style.display = 'none';
+  lightboxList = [];
+  lightboxIndex = 0;
 }
 
 // --- Wire overlay controls ---
@@ -6146,6 +7135,43 @@ document.getElementById('taskDetailLightbox').addEventListener('click', (e) => {
   // Click outside the image (on the dark background) closes the lightbox
   if (e.target.id === 'taskDetailLightbox') closeLightbox();
 });
+// Prev / Next click handlers
+document.getElementById('taskDetailLightboxPrev').addEventListener('click', (e) => {
+  e.stopPropagation();
+  lightboxPrev();
+});
+document.getElementById('taskDetailLightboxNext').addEventListener('click', (e) => {
+  e.stopPropagation();
+  lightboxNext();
+});
+// Scroll to navigate — throttled so a single trackpad gesture only moves one step.
+// Scroll down / wheel-forward → next; scroll up → previous.
+document.getElementById('taskDetailLightbox').addEventListener('wheel', (e) => {
+  // Only active when the lightbox is visible
+  const lightbox = document.getElementById('taskDetailLightbox');
+  if (lightbox.style.display !== 'flex') return;
+  e.preventDefault();
+  const now = Date.now();
+  if (now - lightboxLastNavAt < 280) return; // throttle: ignore rapid follow-ups
+  if (Math.abs(e.deltaY) < 12 && Math.abs(e.deltaX) < 12) return; // ignore tiny scrolls
+  lightboxLastNavAt = now;
+  // Use the larger of deltaY/deltaX so horizontal trackpad swipes also work
+  const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+  if (delta > 0) lightboxNext();
+  else if (delta < 0) lightboxPrev();
+}, { passive: false });
+// Keyboard navigation — arrow keys when lightbox is open
+document.addEventListener('keydown', (e) => {
+  const lightbox = document.getElementById('taskDetailLightbox');
+  if (lightbox.style.display !== 'flex') return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    lightboxNext();
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    lightboxPrev();
+  }
+}, true);
 
 // Save title and description on blur (and on Enter for title)
 document.getElementById('taskDetailTitle').addEventListener('blur', saveDetailFields);
@@ -6158,8 +7184,26 @@ document.getElementById('taskDetailTitle').addEventListener('keydown', (e) => {
 });
 document.getElementById('taskDetailDesc').addEventListener('blur', saveDetailFields);
 
+// Activity composer — Post button enable state + Cmd/Ctrl+Enter submit
+document.getElementById('taskDetailCommentInput').addEventListener('input', () => {
+  updateComposerSubmitState();
+  // Auto-grow the textarea up to its CSS max-height
+  const ta = document.getElementById('taskDetailCommentInput');
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
+});
+document.getElementById('taskDetailCommentInput').addEventListener('keydown', (e) => {
+  // Enter submits. Shift+Enter inserts a newline for the rare multi-line comment.
+  // Cmd/Ctrl+Enter also still works for users with that muscle memory.
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitComment();
+  }
+});
+document.getElementById('taskDetailCommentSubmit').addEventListener('click', submitComment);
+
 // File picker (+image button)
-document.getElementById('taskDetailAddImage').addEventListener('click', () => {
+document.getElementById('taskDetailImagesAddMini').addEventListener('click', () => {
   document.getElementById('taskDetailFilePicker').click();
 });
 document.getElementById('taskDetailFilePicker').addEventListener('change', async (e) => {
@@ -6206,6 +7250,111 @@ document.addEventListener('paste', async (e) => {
     const files = Array.from(e.dataTransfer.files || []);
     for (const f of files) {
       if (f.type.startsWith('image/')) await addImageBlob(f);
+    }
+  });
+})();
+
+// ============ QUEST IMAGE EVENT WIRING ============
+// +image button on the Quest page
+document.getElementById('questImagesAdd').addEventListener('click', () => {
+  document.getElementById('questImagesFilePicker').click();
+});
+document.getElementById('questImagesFilePicker').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  for (const f of files) {
+    if (f.type.startsWith('image/')) await addQuestImageBlob(f);
+  }
+  e.target.value = '';
+});
+
+// Paste handler — when viewing a Quest (and no other overlay/input is active),
+// capture clipboard images and attach to the Quest. Runs only when:
+//   - current view is 'quest'
+//   - task detail overlay is not open (otherwise the existing paste handler takes it)
+//   - focus target is not a text input/textarea (typing should remain typing)
+document.addEventListener('paste', async (e) => {
+  if (currentView !== 'quest') return;
+  if (detailTaskId) return; // task detail handler takes precedence
+  // Don't steal paste from text fields the user is actively typing into
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA') {
+    // Check if the active element has any image in clipboard — if not, let text paste through
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    const hasImage = Array.from(items).some(i => i.kind === 'file' && i.type.startsWith('image/'));
+    if (!hasImage) return;
+    // Otherwise: image paste wins, even in a text field
+  }
+  const items = (e.clipboardData && e.clipboardData.items) || [];
+  for (const item of items) {
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (blob) await addQuestImageBlob(blob);
+      return;
+    }
+  }
+});
+
+// Drag-and-drop images directly onto the Quest images grid
+(function setupQuestImageDrop() {
+  const grid = document.getElementById('questImagesGrid');
+  if (!grid) return;
+  ['dragenter', 'dragover'].forEach(evt => {
+    grid.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      grid.classList.add('drop-target');
+    });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    grid.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      grid.classList.remove('drop-target');
+    });
+  });
+  grid.addEventListener('drop', async (e) => {
+    if (currentView !== 'quest') return;
+    const files = Array.from(e.dataTransfer.files || []);
+    for (const f of files) {
+      if (f.type.startsWith('image/')) await addQuestImageBlob(f);
+    }
+  });
+})();
+
+// Also accept drops anywhere on the Quest page (not just on the images grid).
+// This makes "drop a file from finder onto the page" work intuitively without
+// needing to hit the small grid target. Only active when on the Quest view.
+(function setupQuestPageDrop() {
+  const page = document.querySelector('[data-view-target="quest"]');
+  if (!page) return;
+  ['dragenter', 'dragover'].forEach(evt => {
+    page.addEventListener(evt, (e) => {
+      if (currentView !== 'quest') return;
+      // Only react if files are being dragged (not internal drag-and-drop of cards)
+      const types = Array.from(e.dataTransfer.types || []);
+      if (!types.includes('Files')) return;
+      e.preventDefault();
+      const grid = document.getElementById('questImagesGrid');
+      if (grid) grid.classList.add('drop-target');
+    });
+  });
+  page.addEventListener('dragleave', (e) => {
+    // Only clear when leaving the page entirely (not when moving between children)
+    if (e.relatedTarget && page.contains(e.relatedTarget)) return;
+    const grid = document.getElementById('questImagesGrid');
+    if (grid) grid.classList.remove('drop-target');
+  });
+  page.addEventListener('drop', async (e) => {
+    if (currentView !== 'quest') return;
+    const types = Array.from(e.dataTransfer.types || []);
+    if (!types.includes('Files')) return;
+    e.preventDefault();
+    const grid = document.getElementById('questImagesGrid');
+    if (grid) grid.classList.remove('drop-target');
+    const files = Array.from(e.dataTransfer.files || []);
+    for (const f of files) {
+      if (f.type.startsWith('image/')) await addQuestImageBlob(f);
     }
   });
 })();
@@ -6798,7 +7947,7 @@ function renderJournal() {
         time: entry.time,
         note: entry.note,
         task: t,
-        kind: 'focus',
+        kind: entry.kind || 'focus',  // preserve actual kind: 'focus' or 'comment'
       });
     });
   });
@@ -6846,6 +7995,8 @@ function renderJournal() {
     const row = document.createElement('div');
     row.className = 'journal-entry';
     if (entry.kind === 'outcome') row.classList.add('is-outcome');
+    if (entry.kind === 'comment') row.classList.add('is-comment');
+    if (entry.kind === 'focus')   row.classList.add('is-focus');
 
     // Source column — task/quest reference, or "Outcome achieved" for vision entries
     const source = document.createElement('div');
@@ -6859,6 +8010,12 @@ function renderJournal() {
       source.appendChild(tag);
     } else {
       const t = entry.task;
+      // Kind prefix for non-outcome entries — small visual marker so manual
+      // comments are distinguishable from focus check-ins at a glance.
+      const kindPrefix = document.createElement('span');
+      kindPrefix.className = 'kind-prefix kind-' + (entry.kind || 'focus');
+      kindPrefix.textContent = entry.kind === 'comment' ? '· Comment' : '◆ Focus';
+      source.appendChild(kindPrefix);
       if (t.type === 'quest') {
         const tag = document.createElement('span');
         tag.className = 'quest-tag';
