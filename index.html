@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v107</title>
+<title>Kanban Quest — v113</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -2972,6 +2972,30 @@
     .auth-gate-title { font-size: 40px; }
   }
 
+  /* ============ SYNC INDICATOR ============
+     Tiny circular dot that signals cloud-save status. Hidden when synced
+     (default), pulses chartreuse while syncing, turns red on persistent errors. */
+  .sync-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 12px;
+    background: var(--ink-faint);
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .sync-indicator.is-syncing {
+    background: var(--accent);
+    animation: sync-pulse 1.2s ease-in-out infinite;
+  }
+  .sync-indicator.is-error {
+    background: var(--pain-5);
+    box-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
+  }
+  @keyframes sync-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
   /* ============ USER MENU ============ */
   .user-menu {
     position: relative;
@@ -4317,10 +4341,10 @@
      Hides itself once a Supabase session exists. -->
 <div class="auth-gate" id="authGate" aria-hidden="false">
   <div class="auth-gate-card">
-    <span class="auth-gate-eyebrow">— Quest board</span>
-    <h1 class="auth-gate-title">Sign <em>in.</em></h1>
+    <span class="auth-gate-eyebrow">— Welcome</span>
+    <h1 class="auth-gate-title">Quest <em>Board.</em></h1>
     <p class="auth-gate-prompt">
-      A small private kanban for tracking your work, your wins, and your week's intent.
+      Forge your fate. Track your triumph.
     </p>
     <button class="auth-gate-button" id="googleSignInBtn">
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -4356,13 +4380,16 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v107</span>
+      <span class="eyebrow">— Kanban / v113</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <div class="level-block">
       <span class="label">Level</span>
       <span class="value" id="levelValue">1</span>
     </div>
+    <!-- Sync indicator — shows cloud-save status when not idle.
+         Three states: hidden (synced), syncing (visible briefly), error (red, persistent). -->
+    <div class="sync-indicator" id="syncIndicator" style="display:none" title=""></div>
     <!-- User menu — shown only when signed in. Tiny, unobtrusive. -->
     <div class="user-menu" id="userMenu" style="display:none">
       <button class="user-menu-trigger" id="userMenuTrigger" title="Account">
@@ -4623,7 +4650,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v107</span>
+      <span class="footer-version">v113</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
@@ -5074,6 +5101,73 @@
   <div class="lt-sub">— onward</div>
 </div>
 
+<!-- ============================================================
+     ⚠️  DEV-MODE AUTH BYPASS — REMOVE BEFORE FULL PUBLIC LAUNCH
+     ============================================================
+     This entire <script> block lets the app skip auth when:
+       (a) It's loaded inside an iframe (auto-detected, e.g. Claude preview)
+       (b) The "Skip (dev)" button bottom-right is clicked manually
+     
+     Why this exists:
+       Allows building/testing the app without re-authenticating every reload.
+       In dev mode, data falls back to localStorage (no cloud sync).
+     
+     ⚠️  TO REMOVE WHEN READY FOR FULL LAUNCH:
+       1. Delete this entire <script> block (the one immediately below)
+       2. In the next <script type="module"> block, find and delete the
+          `if (window.__authBypassed) { ... } else {` wrapping around the
+          auth setup, keeping only the inner else-branch contents.
+       3. In the main <script> (further down), find `if (window.__devMode)`
+          branches in both load() and save() — delete those branches.
+          Search for "__devMode" to find all references.
+     
+     Search anchors for safe removal:
+       - "DEV-MODE AUTH BYPASS — REMOVE BEFORE FULL PUBLIC LAUNCH"
+       - "__devMode"
+       - "__authBypassed"
+       - "__enterDevMode"
+     ============================================================ -->
+<script>
+(function () {
+  const IS_IFRAMED = (function () {
+    try { return window.self !== window.top; } catch (e) { return true; }
+  })();
+
+  window.__enterDevMode = function (reason) {
+    console.warn('[dev] Bypassing auth gate (' + reason + '). Data is local-only.');
+    window.__devMode = true;
+    document.body.classList.add('signed-in');
+    const gate = document.getElementById('authGate');
+    if (gate) gate.setAttribute('aria-hidden', 'true');
+    const userMenu = document.getElementById('userMenu');
+    if (userMenu) userMenu.style.display = 'none';
+    window.__authBypassed = true;
+    if (window.__startKanbanApp && !window.__kanbanBooted) {
+      window.__kanbanBooted = true;
+      window.__startKanbanApp();
+    }
+  };
+
+  function ready(fn) {
+    if (document.readyState !== 'loading') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
+  }
+
+  ready(function () {
+    if (IS_IFRAMED) {
+      window.__enterDevMode('iframe context');
+    } else {
+      const btn = document.createElement('button');
+      btn.textContent = 'Skip (dev)';
+      btn.style.cssText = 'position:fixed;bottom:14px;right:14px;background:transparent;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);font-family:monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;padding:6px 10px;border-radius:3px;cursor:pointer;z-index:600;';
+      btn.addEventListener('click', function () { window.__enterDevMode('manual skip'); });
+      document.body.appendChild(btn);
+    }
+  });
+})();
+</script>
+<!-- ============ END DEV-MODE AUTH BYPASS ============ -->
+
 <script type="module">
 // ============ SUPABASE AUTH ============
 // Loads the Supabase client, manages sign-in/sign-out, gates the app.
@@ -5143,7 +5237,10 @@ signInBtn.addEventListener('click', async () => {
 // ---- Sign-out flow ----
 signOutBtn.addEventListener('click', async () => {
   await supabase.auth.signOut();
-  // The auth state listener will handle the UI flip
+  // Reload to clear all in-memory state and snapshot caches. This is the
+  // simplest, safest way to ensure the next sign-in starts with no traces
+  // of the previous user.
+  window.location.reload();
 });
 
 // ---- User menu open/close ----
@@ -5181,21 +5278,28 @@ function applySession(session) {
   }
 }
 
-// Check current session on load (handles OAuth callback redirects too)
-(async () => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    applySession(session);
-  } catch (err) {
-    console.error('Session check failed:', err);
-    applySession(null);
-  }
-})();
+// ---- Auth flow ----
+// The dev-mode bypass (standalone script above) may have already set
+// window.__authBypassed. In that case, skip all auth setup entirely.
+if (window.__authBypassed) {
+  console.warn('[auth] bypassed by dev mode — Supabase auth setup skipped');
+} else {
+  // Check current session on load (handles OAuth callback redirects too)
+  (async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      applySession(session);
+    } catch (err) {
+      console.error('Session check failed:', err);
+      applySession(null);
+    }
+  })();
 
-// React to future auth state changes (sign-in, sign-out, token refresh)
-supabase.auth.onAuthStateChange((_event, session) => {
-  applySession(session);
-});
+  // React to future auth state changes (sign-in, sign-out, token refresh)
+  supabase.auth.onAuthStateChange((_event, session) => {
+    applySession(session);
+  });
+}
 </script>
 
 <script>
@@ -5476,55 +5580,446 @@ function rolloverVisionIfNeeded() {
   state.weeklyVision = emptyVision(currentKey);
 }
 
-async function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      state = { ...state, ...parsed };
-      // Day strip — load if today's key matches, otherwise drop
-      if (parsed.dayStripKey === currentDayKey() && Array.isArray(parsed.dayStripBlocks)) {
-        dayStripBlocks = parsed.dayStripBlocks;
-        dayStripKey = parsed.dayStripKey;
-      } else {
-        dayStripBlocks = [];
-        dayStripKey = currentDayKey();
-      }
-      // Stats range preference
-      if (typeof parsed.statsRangeIdx === 'number' &&
-          parsed.statsRangeIdx >= 0 &&
-          parsed.statsRangeIdx < STATS_RANGES.length) {
-        statsRangeIdx = parsed.statsRangeIdx;
-      }
-    } else {
-      dayStripKey = currentDayKey();
-    }
-  } catch (e) { /* fresh start */ }
-  // Migration: existing Done tasks are grandfathered as already-awarded so
-  // re-shuffling them doesn't unexpectedly award XP retroactively.
-  state.tasks.forEach(t => {
-    if (t.col === 'done' && t.awarded === undefined) {
-      t.awarded = true;
-    }
-    // Migration (v91): unify focusLog into a generic activity stream.
-    // Legacy entries (just {time, note}) are tagged kind:'focus' so they
-    // continue to behave identically. New entries can be kind:'comment'
-    // for manual updates added via the task detail overlay.
+// ============ CLOUD-BACKED PERSISTENCE ============
+// Tasks and weekly visions live in Supabase. Per-device UI state (daystrip
+// blocks for today, stats range pref) still lives in localStorage — these
+// are device-specific, not user content.
+//
+// Architecture:
+//   - load() runs once on sign-in: fetches everything from cloud, hydrates
+//     state, runs one-time migration from localStorage if cloud is empty.
+//   - save() is unchanged from the caller's perspective. Internally it
+//     schedules a debounced cloud sync (300ms) that diffs the current state
+//     against the last-saved snapshot and pushes only changed rows.
+//   - Optimistic UI: state updates render immediately; cloud writes happen
+//     in background. If a write fails, retries with exponential backoff.
+
+// Per-device UI state still in localStorage
+const LOCAL_UI_KEY = 'kanban-quest-ui';      // dayStripBlocks, statsRangeIdx
+const LEGACY_KEY = 'kanban-quest-v7';        // old all-in-one key; migrated then deleted
+
+// Snapshot of last successfully-synced state, used for diffing
+let __lastSyncedTasks = new Map();   // taskId -> serialized JSON
+let __lastSyncedVisions = new Map(); // weekKey -> serialized JSON
+let __lastSyncedProfile = '';        // serialized profile fields
+let __currentUserId = null;          // set when load() runs
+
+// Debounce + queue for cloud saves
+let __saveTimer = null;
+let __savePending = false;
+let __saveInFlight = false;
+const SAVE_DEBOUNCE_MS = 300;
+
+// Retry state for failed cloud writes
+let __retryDelay = 1000;
+const MAX_RETRY_DELAY = 30000;
+
+// ---- Sync indicator helpers ----
+function setSyncStatus(status, message) {
+  const el = document.getElementById('syncIndicator');
+  if (!el) return;
+  el.classList.remove('is-syncing', 'is-error');
+  if (status === 'syncing') {
+    el.style.display = '';
+    el.classList.add('is-syncing');
+    el.title = 'Saving…';
+  } else if (status === 'error') {
+    el.style.display = '';
+    el.classList.add('is-error');
+    el.title = message || 'Sync failed — retrying';
+  } else {
+    // idle / synced
+    el.style.display = 'none';
+    el.title = '';
+  }
+}
+
+// ---- Serializers (state → row, row → state) ----
+function taskToRow(t, userId) {
+  return {
+    id: t.id,
+    user_id: userId,
+    text: t.text || '',
+    type: t.type === 'quest' ? 'quest' : 'task',
+    col: t.col || 'todo',
+    pain: typeof t.pain === 'number' ? t.pain : 3,
+    created_at: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
+    completed_at: t.completedAt ? new Date(t.completedAt).toISOString() : null,
+    awarded: !!t.awarded,
+    backlog: !!t.backlog,
+    quest_id: t.questId || null,
+    description: t.description || null,
+    url: t.url || null,
+    focus_log: Array.isArray(t.focusLog) ? t.focusLog : [],
+    attachments: Array.isArray(t.attachments) ? t.attachments : [],
+  };
+}
+function rowToTask(r) {
+  return {
+    id: r.id,
+    text: r.text,
+    type: r.type,
+    col: r.col,
+    pain: r.pain,
+    createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
+    completedAt: r.completed_at ? new Date(r.completed_at).getTime() : undefined,
+    awarded: !!r.awarded,
+    backlog: !!r.backlog,
+    questId: r.quest_id || undefined,
+    description: r.description || undefined,
+    url: r.url || undefined,
+    focusLog: Array.isArray(r.focus_log) ? r.focus_log : [],
+    attachments: Array.isArray(r.attachments) ? r.attachments : [],
+  };
+}
+function visionToRow(v, userId) {
+  return {
+    user_id: userId,
+    week_key: v.weekKey,
+    outcomes: Array.isArray(v.outcomes) ? v.outcomes : [],
+  };
+}
+function rowToVision(r) {
+  return {
+    weekKey: r.week_key,
+    outcomes: Array.isArray(r.outcomes) ? r.outcomes : [],
+  };
+}
+
+// ---- Cloud load: fetch everything, hydrate state ----
+async function cloudLoad(userId) {
+  const supabase = window.supabase;
+  // Fetch profile, tasks, visions in parallel
+  const [profileRes, tasksRes, visionsRes] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', userId).single(),
+    supabase.from('tasks').select('*').eq('user_id', userId),
+    supabase.from('weekly_visions').select('*').eq('user_id', userId),
+  ]);
+  if (profileRes.error) throw new Error('Failed to load profile: ' + profileRes.error.message);
+  if (tasksRes.error)   throw new Error('Failed to load tasks: ' + tasksRes.error.message);
+  if (visionsRes.error) throw new Error('Failed to load visions: ' + visionsRes.error.message);
+
+  // Apply profile fields to state
+  const profile = profileRes.data || {};
+  state.xp = profile.xp || 0;
+  state.level = profile.level || 1;
+  state.totalDone = profile.total_done || 0;
+
+  // Apply tasks
+  state.tasks = (tasksRes.data || []).map(rowToTask);
+
+  // Apply visions — current week is state.weeklyVision, rest is state.visionHistory
+  const currentKey = currentWeekKey();
+  const allVisions = (visionsRes.data || []).map(rowToVision);
+  const current = allVisions.find(v => v.weekKey === currentKey);
+  const past = allVisions.filter(v => v.weekKey !== currentKey)
+    .sort((a, b) => a.weekKey.localeCompare(b.weekKey));
+  state.weeklyVision = current || null;
+  state.visionHistory = past;
+
+  // Snapshot what we just loaded so future diffs work correctly
+  __lastSyncedTasks.clear();
+  for (const row of (tasksRes.data || [])) {
+    __lastSyncedTasks.set(row.id, JSON.stringify(taskToRow(rowToTask(row), userId)));
+  }
+  __lastSyncedVisions.clear();
+  for (const v of allVisions) {
+    __lastSyncedVisions.set(v.weekKey, JSON.stringify(visionToRow(v, userId)));
+  }
+  __lastSyncedProfile = JSON.stringify({ xp: state.xp, level: state.level, total_done: state.totalDone });
+}
+
+// ---- One-time migration from old localStorage to cloud ----
+// Runs only if cloud has zero tasks AND legacy localStorage has data.
+async function migrateLocalToCloud(userId) {
+  const raw = localStorage.getItem(LEGACY_KEY);
+  if (!raw) return false;
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch (e) { return false; }
+  if (!parsed || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) return false;
+
+  console.log('[migrate] uploading', parsed.tasks.length, 'tasks to cloud…');
+  setSyncStatus('syncing');
+  const supabase = window.supabase;
+
+  // Upload tasks in batches of 100 to be safe
+  const taskRows = parsed.tasks.map(t => {
+    // Apply same migrations the old load() did before upload
+    if (t.col === 'done' && t.awarded === undefined) t.awarded = true;
     if (Array.isArray(t.focusLog)) {
       t.focusLog.forEach(entry => {
         if (!entry.kind) entry.kind = 'focus';
         if (!entry.id) entry.id = 'e_' + uid();
       });
     }
+    return taskToRow(t, userId);
   });
-  // Weekly Vision: ensure something exists for the current week (rollover if needed)
-  rolloverVisionIfNeeded();
+  for (let i = 0; i < taskRows.length; i += 100) {
+    const batch = taskRows.slice(i, i + 100);
+    const { error } = await supabase.from('tasks').insert(batch);
+    if (error) throw new Error('Task migration failed: ' + error.message);
+  }
+
+  // Upload current vision + history
+  const visionRows = [];
+  if (parsed.weeklyVision) visionRows.push(visionToRow(parsed.weeklyVision, userId));
+  if (Array.isArray(parsed.visionHistory)) {
+    for (const v of parsed.visionHistory) visionRows.push(visionToRow(v, userId));
+  }
+  if (visionRows.length > 0) {
+    const { error } = await supabase.from('weekly_visions').upsert(visionRows);
+    if (error) throw new Error('Vision migration failed: ' + error.message);
+  }
+
+  // Upload XP/level/totalDone to profile
+  const profileUpdate = {
+    xp: parsed.xp || 0,
+    level: parsed.level || 1,
+    total_done: parsed.totalDone || 0,
+  };
+  const { error: profileErr } = await supabase.from('profiles').update(profileUpdate).eq('id', userId);
+  if (profileErr) throw new Error('Profile migration failed: ' + profileErr.message);
+
+  // Migration succeeded — wipe the legacy key
+  localStorage.removeItem(LEGACY_KEY);
+  console.log('[migrate] complete, legacy localStorage cleared');
+  return true;
 }
-async function save() {
+
+// ---- Load: cloud first, with migration check ----
+async function load() {
+  // Dev-mode bypass: load from legacy localStorage, no cloud
+  if (window.__devMode) {
+    try {
+      const raw = localStorage.getItem(LEGACY_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        state = { ...state, ...parsed };
+        if (parsed.dayStripKey === currentDayKey() && Array.isArray(parsed.dayStripBlocks)) {
+          dayStripBlocks = parsed.dayStripBlocks;
+          dayStripKey = parsed.dayStripKey;
+        } else {
+          dayStripBlocks = [];
+          dayStripKey = currentDayKey();
+        }
+        if (typeof parsed.statsRangeIdx === 'number' &&
+            parsed.statsRangeIdx >= 0 && parsed.statsRangeIdx < STATS_RANGES.length) {
+          statsRangeIdx = parsed.statsRangeIdx;
+        }
+      } else {
+        dayStripKey = currentDayKey();
+      }
+    } catch (e) { /* fresh start */ }
+    // Apply same legacy migrations as the old localStorage-only load() did
+    state.tasks.forEach(t => {
+      if (t.col === 'done' && t.awarded === undefined) t.awarded = true;
+      if (Array.isArray(t.focusLog)) {
+        t.focusLog.forEach(entry => {
+          if (!entry.kind) entry.kind = 'focus';
+          if (!entry.id) entry.id = 'e_' + uid();
+        });
+      }
+    });
+    rolloverVisionIfNeeded();
+    return;
+  }
+
+  // Production path: get the current user from the Supabase session
+  const supabase = window.supabase;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.warn('[load] no authenticated user — skipping cloud load');
+    return;
+  }
+  __currentUserId = user.id;
+
   try {
-    const payload = { ...state, dayStripBlocks, dayStripKey, statsRangeIdx };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    // First load: fetch what's in cloud
+    await cloudLoad(__currentUserId);
+
+    // If cloud has no tasks AND legacy localStorage has data, migrate
+    if (state.tasks.length === 0) {
+      const didMigrate = await migrateLocalToCloud(__currentUserId);
+      if (didMigrate) {
+        // Reload from cloud to pick up the freshly-migrated data
+        await cloudLoad(__currentUserId);
+      }
+    } else {
+      // Cloud already has data — clear any stale legacy localStorage to avoid confusion
+      try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+    }
+  } catch (err) {
+    console.error('[load] cloud load failed:', err);
+    setSyncStatus('error', 'Could not load your data — ' + err.message);
+    throw err;
+  }
+
+  // Per-device UI state (daystrip for today, stats range preference)
+  try {
+    const uiRaw = localStorage.getItem(LOCAL_UI_KEY);
+    if (uiRaw) {
+      const ui = JSON.parse(uiRaw);
+      if (ui.dayStripKey === currentDayKey() && Array.isArray(ui.dayStripBlocks)) {
+        dayStripBlocks = ui.dayStripBlocks;
+        dayStripKey = ui.dayStripKey;
+      } else {
+        dayStripBlocks = [];
+        dayStripKey = currentDayKey();
+      }
+      if (typeof ui.statsRangeIdx === 'number' &&
+          ui.statsRangeIdx >= 0 && ui.statsRangeIdx < STATS_RANGES.length) {
+        statsRangeIdx = ui.statsRangeIdx;
+      }
+    } else {
+      dayStripKey = currentDayKey();
+    }
+  } catch (e) {
+    dayStripKey = currentDayKey();
+  }
+
+  // Ensure a current-week vision exists (rollover if needed)
+  rolloverVisionIfNeeded();
+  setSyncStatus('idle');
+}
+
+// ---- Save: debounced cloud sync ----
+async function save() {
+  // Dev-mode bypass: write everything to legacy localStorage, no cloud
+  if (window.__devMode) {
+    try {
+      const payload = { ...state, dayStripBlocks, dayStripKey, statsRangeIdx };
+      localStorage.setItem(LEGACY_KEY, JSON.stringify(payload));
+    } catch (e) { /* quota exceeded or disabled — ignore */ }
+    return;
+  }
+
+  // Write local-only UI state synchronously (small, no network)
+  try {
+    const ui = { dayStripBlocks, dayStripKey, statsRangeIdx };
+    localStorage.setItem(LOCAL_UI_KEY, JSON.stringify(ui));
   } catch (e) { /* quota exceeded or disabled — ignore */ }
+
+  // Schedule a debounced cloud sync
+  if (!__currentUserId) return; // not signed in yet, nothing to sync
+  __savePending = true;
+  if (__saveTimer) clearTimeout(__saveTimer);
+  __saveTimer = setTimeout(() => {
+    __saveTimer = null;
+    flushCloudSave();
+  }, SAVE_DEBOUNCE_MS);
+}
+
+// ---- Cloud sync: diff state vs last snapshot, push changed rows ----
+async function flushCloudSave() {
+  if (__saveInFlight) {
+    // Another save is in progress — mark pending and let it pick up the change
+    __savePending = true;
+    return;
+  }
+  if (!__currentUserId) return;
+  __saveInFlight = true;
+  __savePending = false;
+  setSyncStatus('syncing');
+
+  const userId = __currentUserId;
+  const supabase = window.supabase;
+
+  try {
+    // --- TASKS: detect inserts/updates/deletes ---
+    const currentRows = new Map();
+    for (const t of state.tasks) {
+      const row = taskToRow(t, userId);
+      currentRows.set(t.id, row);
+    }
+    const toUpsert = [];
+    for (const [id, row] of currentRows) {
+      const serialized = JSON.stringify(row);
+      if (__lastSyncedTasks.get(id) !== serialized) {
+        toUpsert.push(row);
+      }
+    }
+    const toDelete = [];
+    for (const id of __lastSyncedTasks.keys()) {
+      if (!currentRows.has(id)) toDelete.push(id);
+    }
+
+    if (toUpsert.length > 0) {
+      const { error } = await supabase.from('tasks').upsert(toUpsert);
+      if (error) throw new Error('Task upsert failed: ' + error.message);
+    }
+    if (toDelete.length > 0) {
+      const { error } = await supabase.from('tasks').delete().in('id', toDelete);
+      if (error) throw new Error('Task delete failed: ' + error.message);
+    }
+
+    // --- VISIONS: upsert current + history, delete any removed ---
+    const currentVisions = new Map();
+    if (state.weeklyVision) {
+      currentVisions.set(state.weeklyVision.weekKey, visionToRow(state.weeklyVision, userId));
+    }
+    if (Array.isArray(state.visionHistory)) {
+      for (const v of state.visionHistory) {
+        currentVisions.set(v.weekKey, visionToRow(v, userId));
+      }
+    }
+    const visionsToUpsert = [];
+    for (const [key, row] of currentVisions) {
+      const serialized = JSON.stringify(row);
+      if (__lastSyncedVisions.get(key) !== serialized) {
+        visionsToUpsert.push(row);
+      }
+    }
+    const visionsToDelete = [];
+    for (const key of __lastSyncedVisions.keys()) {
+      if (!currentVisions.has(key)) visionsToDelete.push(key);
+    }
+    if (visionsToUpsert.length > 0) {
+      const { error } = await supabase.from('weekly_visions').upsert(visionsToUpsert);
+      if (error) throw new Error('Vision upsert failed: ' + error.message);
+    }
+    if (visionsToDelete.length > 0) {
+      const { error } = await supabase.from('weekly_visions')
+        .delete().eq('user_id', userId).in('week_key', visionsToDelete);
+      if (error) throw new Error('Vision delete failed: ' + error.message);
+    }
+
+    // --- PROFILE: xp / level / total_done ---
+    const profileObj = { xp: state.xp || 0, level: state.level || 1, total_done: state.totalDone || 0 };
+    const profileSerialized = JSON.stringify(profileObj);
+    if (profileSerialized !== __lastSyncedProfile) {
+      const { error } = await supabase.from('profiles').update(profileObj).eq('id', userId);
+      if (error) throw new Error('Profile update failed: ' + error.message);
+      __lastSyncedProfile = profileSerialized;
+    }
+
+    // Update the snapshot — these states are now the last successfully synced versions
+    __lastSyncedTasks = new Map();
+    for (const [id, row] of currentRows) __lastSyncedTasks.set(id, JSON.stringify(row));
+    __lastSyncedVisions = new Map();
+    for (const [key, row] of currentVisions) __lastSyncedVisions.set(key, JSON.stringify(row));
+
+    // Success — reset retry delay
+    __retryDelay = 1000;
+    setSyncStatus('idle');
+
+    // If another save came in while we were syncing, run again
+    if (__savePending) {
+      __saveInFlight = false;
+      setTimeout(flushCloudSave, 50);
+      return;
+    }
+  } catch (err) {
+    console.error('[cloudSave] failed:', err);
+    setSyncStatus('error', 'Sync failed — retrying in ' + Math.round(__retryDelay / 1000) + 's');
+    // Schedule a retry with exponential backoff
+    setTimeout(() => {
+      __saveInFlight = false;
+      flushCloudSave();
+    }, __retryDelay);
+    __retryDelay = Math.min(__retryDelay * 2, MAX_RETRY_DELAY);
+    return;
+  }
+  __saveInFlight = false;
 }
 
 // ============ WEEKLY VISION ============
@@ -6576,19 +7071,45 @@ document.getElementById('resetBtn').addEventListener('click', async () => {
   // Reset day strip
   dayStripBlocks = [];
   dayStripKey = currentDayKey();
+  // Reset weekly vision
+  state.weeklyVision = null;
+  state.visionHistory = [];
+  rolloverVisionIfNeeded();
   // Exit focus mode if active
   if (focusTaskId) {
     try { exitFocus(); } catch (e) { console.warn('[reset] exitFocus error:', e); }
   }
-  // Explicitly nuke localStorage as belt-and-suspenders
+  // Nuke local storage (both new UI-only key and legacy all-in-one key)
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LOCAL_UI_KEY);
+    localStorage.removeItem(LEGACY_KEY);
     console.log('[reset] localStorage cleared');
   } catch (e) {
     console.warn('[reset] localStorage clear failed:', e);
   }
+  // Nuke cloud data for this user. Delete all their tasks and visions;
+  // reset profile XP. The snapshot maps are cleared so the next save()
+  // doesn't think anything still needs to be deleted.
+  if (__currentUserId && window.supabase) {
+    try {
+      setSyncStatus('syncing');
+      const supabase = window.supabase;
+      await supabase.from('tasks').delete().eq('user_id', __currentUserId);
+      await supabase.from('weekly_visions').delete().eq('user_id', __currentUserId);
+      await supabase.from('profiles').update({ xp: 0, level: 1, total_done: 0 }).eq('id', __currentUserId);
+      console.log('[reset] cloud data cleared');
+    } catch (e) {
+      console.warn('[reset] cloud clear failed:', e);
+    }
+  }
+  // Clear the snapshot maps so save() starts fresh
+  __lastSyncedTasks = new Map();
+  __lastSyncedVisions = new Map();
+  __lastSyncedProfile = JSON.stringify({ xp: 0, level: 1, total_done: 0 });
+  // After cloud clear, push the empty state back (covers the rolloverVisionIfNeeded vision)
   await save();
   render();
+  setSyncStatus('idle');
   console.log('[reset] done');
 });
 
