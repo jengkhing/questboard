@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v113</title>
+<title>Kanban Quest — v167</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -123,12 +123,14 @@
   .view-row {
     display: flex;
     align-items: baseline;
+    /* Center the nav cluster in the row to draw focal weight toward the
+       middle of the page where the Quests / Journal / Stats live. */
+    justify-content: center;
     gap: 28px;
     margin-bottom: 24px;
     flex-wrap: wrap;
   }
-  /* Stats / Journal nav — sits inline beside the view-toggle. Same visual
-     language as before (small mono caps, faint by default, accent when active). */
+  /* Nav items — small mono caps, faint by default, accent when active. */
   .view-nav {
     display: flex;
     align-items: center;
@@ -139,22 +141,24 @@
     font-size: 10px;
     letter-spacing: 0.25em;
     text-transform: uppercase;
-    color: var(--ink-faint);
+    color: var(--ink-dim);
     white-space: nowrap;
     cursor: pointer;
     padding: 4px 0;
-    transition: color 0.25s, letter-spacing 0.25s;
+    transition: color 0.25s;
     position: relative;
     display: inline-flex;
     align-items: center;
     gap: 6px;
   }
   .view-nav-item:hover {
-    color: var(--ink-dim);
+    color: var(--ink);
   }
   .view-nav-item.active {
     color: var(--accent);
-    letter-spacing: 0.32em;
+    /* No letter-spacing change — the accent color + diamond glyph already
+       signal "active." Spreading the letters wider broke word cohesion,
+       especially when an interior letter is underlined as a hotkey. */
   }
   /* Small diamond appears to the left of the label when active */
   .view-nav-item::before {
@@ -199,21 +203,38 @@
     color: var(--accent);
   }
 
-  .level-block { display: flex; flex-direction: column; align-items: flex-end; }
+  /* Right side of the header — level + sync indicator + user menu, grouped
+     so they read as a compact cluster anchored to the right edge. */
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  /* Inline level block: "LEVEL 1" on a single line, modest size. The big
+     stacked-number look is reserved for moments of real magnitude (e.g.
+     the focus session timer). For a chrome element, smaller and quieter is right. */
+  .level-block {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
   .level-block .label {
     font-family: var(--mono);
     font-size: 10px;
     letter-spacing: 0.25em;
     text-transform: uppercase;
     color: var(--ink-faint);
-    margin-bottom: 6px;
   }
   .level-block .value {
     font-family: var(--serif);
     font-weight: 300;
-    font-size: 56px;
+    /* Restored prominence — was 22px (too quiet), now 40px so it reads as
+       a meaningful identity stat without dominating the header. */
+    font-size: 40px;
     line-height: 1;
     letter-spacing: -0.02em;
+    color: var(--ink);
     transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.4s;
   }
   .level-block .value.bump { transform: scale(1.18); color: var(--accent); }
@@ -312,24 +333,38 @@
      Anchors the week with intentions, not just task minutiae. */
   .weekly-vision {
     margin-bottom: 28px;
-    padding: 22px 24px 24px;
-    background: linear-gradient(180deg,
-      rgba(212, 255, 58, 0.025) 0%,
-      rgba(212, 255, 58, 0.005) 60%,
-      transparent 100%);
-    border: 1px solid var(--line-soft);
-    border-radius: 4px;
+    /* Padding kept similar so content doesn't shift, but bottom can shrink
+       since there's no longer a box to fill out */
+    padding: 22px 24px 16px;
+    /* No box: no all-sides border, no border-radius, no overflow clip.
+       The vision section reads as a "section starts here" zone rather than
+       a contained card. */
+    border: none;
+    border-radius: 0;
+    background: radial-gradient(
+      ellipse at top center,
+      rgba(212, 255, 58, 0.05) 0%,
+      rgba(212, 255, 58, 0.025) 30%,
+      rgba(212, 255, 58, 0.01) 55%,
+      transparent 70%
+    );
     position: relative;
-    overflow: hidden;
   }
-  /* Subtle horizontal sweep at the top of the banner — gives it a "fresh week" feel */
+  /* The single visible edge — a faint horizontal line at the very top that
+     acts as the divider between the nav row above and the vision below.
+     The chartreuse tint glows downward from this line. */
   .weekly-vision::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    opacity: 0.4;
+    /* Strongest in the middle, dissolves at the sides so even the divider
+       line itself fades into the page background at its ends. */
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(212, 255, 58, 0.35) 30%,
+      rgba(212, 255, 58, 0.35) 70%,
+      transparent 100%);
   }
   .wv-header {
     margin-bottom: 18px;
@@ -458,9 +493,9 @@
     font-family: var(--serif);
     /* Italic serif signals "declaration of intent" — same visual language as
        the accented italic em used throughout the app (Quest *board.*,
-       Weekly *outcomes*). Regular weight, slightly larger, comfortable
-       leading. Reads as a statement, not a note. */
-    font-size: 18px;
+       Weekly *outcomes*). Regular weight, comfortable leading. Reads as a
+       statement, not a note. */
+    font-size: 15px;
     font-weight: 400;
     font-style: italic;
     letter-spacing: -0.005em;
@@ -755,6 +790,47 @@
   .task:hover { border-color: var(--ink-faint); transform: translateY(-1px); }
   .task.dragging { opacity: 0.4; cursor: grabbing; }
 
+  /* Quest-linked task — subtle colored left stripe shows which pinned quest
+     the task belongs to. Tinge only on the border + tiny corner dot; the
+     rest of the card stays neutral so the board doesn't become a rainbow. */
+  .task.is-quest-linked {
+    border-left: 3px solid var(--quest-color, var(--accent));
+    padding-left: 13px; /* compensate so text doesn't shift vs other cards */
+  }
+  /* Tiny color dot in the top-right corner — secondary anchor for color
+     identification at a glance, even when the stripe is partly hidden. */
+  .task.is-quest-linked::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--quest-color, var(--accent));
+    opacity: 0.6;
+  }
+
+  /* Brief flash when a task gets newly linked via the keyboard shortcut.
+     Confirms the assignment registered without being loud about it. */
+  .task.just-linked {
+    animation: task-just-linked 0.6s ease-out;
+  }
+  @keyframes task-just-linked {
+    0%   { box-shadow: 0 0 0 0 var(--quest-color, var(--accent)); }
+    30%  { box-shadow: 0 0 0 6px rgba(212, 255, 58, 0.15); }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+
+  /* Companion pulse on the pinned tab that received the assignment. */
+  .pinned-quest-tab.just-received {
+    animation: tab-just-received 0.6s ease-out;
+  }
+  @keyframes tab-just-received {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+  }
+
   /* QUEST — heavier visual weight */
   .task.is-quest {
     background: linear-gradient(180deg, rgba(212, 255, 58, 0.04) 0%, var(--bg-card) 100%);
@@ -811,15 +887,18 @@
     overflow-wrap: break-word;
     padding-right: 8px;
     margin-bottom: 10px;
-    cursor: text;
+    /* The title is no longer click-to-edit — it's part of the solid card
+       surface. No text cursor, no hover affordance suggesting it's a field.
+       Disable text selection so a stray mousedown doesn't start a selection. */
+    cursor: inherit;
+    user-select: none;
+    -webkit-user-select: none;
     border-radius: 2px;
-    transition: background 0.15s;
-  }
-  .task-text:hover {
-    background: rgba(255, 255, 255, 0.02);
   }
   /* Edit state — no visual chrome at all. Just the blinking accent caret
-     signals "you're editing." Card surface stays unchanged. */
+     signals "you're editing." Card surface stays unchanged.
+     Note: as of v117 task titles aren't click-to-edit anymore. These rules
+     stay in case other surfaces still use contenteditable on .task-text. */
   .task-text[contenteditable="true"],
   .task-text[contenteditable="true"]:focus,
   .task-text[contenteditable="true"]:focus-visible {
@@ -1534,6 +1613,13 @@
     letter-spacing: 0.15em;
     text-transform: uppercase;
   }
+  /* When the pinned quest tab bar is visible at the bottom of the viewport,
+     it floats over page content. Reserve scroll space so the footer (and
+     anything else at page-bottom) clears the bar instead of being hidden
+     beneath it. The bar is roughly 72px tall; 90px gives clean breathing room. */
+  body.has-pinned-quests {
+    padding-bottom: 90px;
+  }
   .footer-right {
     display: flex;
     align-items: center;
@@ -1615,33 +1701,64 @@
   footer button:hover { color: var(--accent-warm); }
 
   /* View toggle — Active / Backlog */
-  .view-toggle {
-    display: inline-flex;
-    background: var(--bg-soft);
-    border: 1px solid var(--line-soft);
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 24px;
+  /* Board tabs — sit directly on top of the kanban board (or backlog).
+     Designed to look like real tabs visually connected to the surface below:
+     the active tab's fill EXACTLY matches the column/board background
+     (--bg-soft with --line-soft border), making the tab feel like an
+     extension of the surface beneath. Inactive tabs are darker, recessed. */
+  .board-tabs {
+    display: flex;
+    /* Tabs sit visually flush (no gap) like real browser tabs. Their borders
+       on the inside don't double-up because the borders are only on the
+       outside edges of the cluster effectively (the right edge of tab 1 and
+       left edge of tab 2 meet at a single shared seam). */
+    gap: 0;
+    padding: 0;
+    margin: 16px 0 0;
+    align-items: flex-end;
+    justify-content: flex-start;
   }
   .view-toggle-btn {
     font-family: var(--mono);
     font-size: 10px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    padding: 8px 16px;
-    background: transparent;
-    border: none;
+    padding: 10px 18px 12px;
+    /* Inactive tab: darker than the board, sits recessed. The eye reads it
+       as "not the active surface" without needing extra cues. */
+    background: var(--bg);
+    border: 1px solid var(--line-soft);
+    border-bottom: none;
+    border-radius: 3px 3px 0 0;
     color: var(--ink-faint);
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
     display: flex;
     align-items: center;
     gap: 8px;
+    position: relative;
+    opacity: 0.65;
   }
-  .view-toggle-btn:hover { color: var(--ink-dim); }
+  .view-toggle-btn:hover {
+    color: var(--ink-dim);
+    opacity: 0.85;
+  }
   .view-toggle-btn.active {
-    background: var(--bg-card);
+    /* Active tab: identical fill + border to .column and .backlog-board so
+       the tab visually melts into the surface below it.
+       Note: no z-index here — adding one creates a new stacking context that
+       puts the tab ABOVE the body's grain overlay (z-index:1), while the
+       columns below sit BELOW it. The grain on the columns would then make
+       them look subtly different from the (grain-free) tab. By not setting
+       z-index, the tab gets the same grain treatment as the surface below. */
+    background: var(--bg-soft);
     color: var(--ink);
+    border-color: var(--line-soft);
+    /* Pull down 1px so the tab's bottom border overlaps the board's top —
+       erases the seam between tab and board. */
+    margin-bottom: -1px;
+    padding-bottom: 13px;
+    opacity: 1;
   }
   .view-toggle-btn .count {
     font-family: var(--mono);
@@ -1729,18 +1846,27 @@
   /* ============ QUEST VIEW ============ */
   /* Quest container — wraps hero + kanban as one cohesive "place" */
   .quest-container {
+    /* Background gradient and left border use the open Quest's color
+       (--current-quest-color, set on body when entering a Quest). Falls back
+       to the accent chartreuse if no Quest is open or the variable isn't set. */
     background:
-      linear-gradient(180deg, rgba(212, 255, 58, 0.045) 0%, rgba(212, 255, 58, 0.015) 280px, transparent 600px),
+      linear-gradient(180deg,
+        rgba(var(--current-quest-color-rgb, 212, 255, 58), 0.045) 0%,
+        rgba(var(--current-quest-color-rgb, 212, 255, 58), 0.015) 280px,
+        transparent 600px),
       var(--bg-soft);
     border: 1px solid var(--line-soft);
-    border-left: 3px solid var(--accent);
+    border-left: 3px solid var(--current-quest-color, var(--accent));
     border-radius: 4px;
     padding: 28px;
     margin-bottom: 24px;
     position: relative;
-    box-shadow: 0 0 0 1px rgba(212, 255, 58, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    box-shadow:
+      0 0 0 1px rgba(var(--current-quest-color-rgb, 212, 255, 58), 0.03),
+      inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
-  /* Subtle "quest seal" — small accent dot top-right corner of container */
+  /* Subtle "quest seal" — small accent dot top-right corner of container,
+     also tinted to the open Quest's color. */
   .quest-container::before {
     content: '';
     position: absolute;
@@ -1748,9 +1874,9 @@
     right: 16px;
     width: 6px;
     height: 6px;
-    background: var(--accent);
+    background: var(--current-quest-color, var(--accent));
     border-radius: 50%;
-    box-shadow: 0 0 8px var(--accent);
+    box-shadow: 0 0 8px var(--current-quest-color, var(--accent));
     opacity: 0.6;
   }
 
@@ -1763,18 +1889,62 @@
     border-color: var(--line);
   }
   .quest-container .column.drag-over {
-    border-color: var(--accent);
-    background: rgba(212, 255, 58, 0.04);
+    /* Drag-over inside a Quest uses the quest's color, not the universal accent */
+    border-color: var(--current-quest-color, var(--accent));
+    background: rgba(var(--current-quest-color-rgb, 212, 255, 58), 0.04);
+  }
+  /* Inside a Quest, the kanban columns use a recessed-dark fill rather than
+     --bg-soft. The Quest sub-tabs and the Quest's backlog board need to match
+     that treatment so the tabs visually merge with the surface below them. */
+  .quest-container .view-toggle-btn {
+    /* Push inactive tabs deeper/darker so the contrast against the active
+       tab is as clear as on the main board. The Quest container's bg-soft
+       backdrop softens everything by default, so we have to be more
+       deliberate about the dim/bright contrast here. */
+    background: rgba(0, 0, 0, 0.4);
+    border-color: var(--line-soft);
+    color: var(--ink-faint);
+    opacity: 0.55;
+  }
+  .quest-container .view-toggle-btn:hover {
+    color: var(--ink-dim);
+    opacity: 0.85;
+  }
+  .quest-container .view-toggle-btn.active {
+    /* Active tab: matches the recessed-dark column fill so the bottom border
+       merges with the column tops. Full opacity, bright text, and a thin
+       Quest-color top stripe — same cue language as the pinned tabs. */
+    background: rgba(0, 0, 0, 0.18);
+    border-color: var(--line);
+    border-top: 2px solid var(--current-quest-color, var(--accent));
+    color: var(--ink);
+    opacity: 1;
+  }
+  /* Active-tab flash should return to the matching color, not the main board's --bg-soft */
+  .quest-container .view-toggle-btn.active.flash {
+    animation: nav-flash-quest-active 0.5s ease-out;
+  }
+  @keyframes nav-flash-quest-active {
+    0%   { background: var(--accent); color: var(--bg); }
+    100% { background: rgba(0, 0, 0, 0.18); color: var(--ink); }
+  }
+  /* Quest backlog board — match the recessed-dark fill used by the columns
+     so when the user toggles to the Backlog sub-tab, the surface beneath
+     the tab is identical to the active-sub-tab fill. */
+  .quest-container .backlog-board {
+    background: rgba(0, 0, 0, 0.18);
+    border-color: var(--line);
   }
   /* Slightly lighter task cards inside the Quest, so they pop against the recessed columns */
   .quest-container .task {
     background: var(--bg-card);
   }
 
-  /* Ambient hint when inside a Quest — subtle accent gradient bleeding from the top */
+  /* Ambient hint when inside a Quest — subtle accent gradient bleeding from
+     the top, tinted to the open Quest's color (or chartreuse fallback). */
   body.in-quest {
     background:
-      radial-gradient(ellipse at top, rgba(212, 255, 58, 0.09) 0%, transparent 55%),
+      radial-gradient(ellipse at top, rgba(var(--current-quest-color-rgb, 212, 255, 58), 0.09) 0%, transparent 55%),
       radial-gradient(ellipse at bottom right, rgba(255, 179, 71, 0.03) 0%, transparent 50%),
       var(--bg);
   }
@@ -1786,7 +1956,7 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background: linear-gradient(90deg, transparent, var(--current-quest-color, var(--accent)), transparent);
     opacity: 0.5;
     z-index: 100;
     pointer-events: none;
@@ -1829,6 +1999,15 @@
   @keyframes nav-flash {
     0%   { background: var(--accent); color: var(--bg); }
     100% { background: transparent; color: var(--ink-faint); }
+  }
+  /* Override the flash endpoint for the active tab — leaving background as
+     transparent would break the seamless match with the column surface. */
+  .view-toggle-btn.active.flash {
+    animation: nav-flash-active 0.5s ease-out;
+  }
+  @keyframes nav-flash-active {
+    0%   { background: var(--accent); color: var(--bg); }
+    100% { background: var(--bg-soft); color: var(--ink); }
   }
   .breadcrumb-sep {
     color: var(--ink-faint);
@@ -2195,25 +2374,12 @@
   /* Hide the strip when focus mode is active */
   body.focus-active .daystrip-wrap { display: none; }
 
-  .daystrip-eyebrow {
-    position: absolute;
-    top: 50%;
-    left: 16px;
-    transform: translateY(-50%);
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    pointer-events: none;
-    z-index: 4;
-    background: var(--bg);
-    padding: 0 6px;
-  }
+  /* Budget — now anchored on the LEFT side of the daystrip-wrap, where the
+     'Today' label used to live. Shows "free · Xh" indicating uncommitted time. */
   .daystrip-budget {
     position: absolute;
     top: 50%;
-    right: 16px;
+    left: 16px;
     transform: translateY(-50%);
     font-family: var(--mono);
     font-size: 10px;
@@ -2234,6 +2400,16 @@
     letter-spacing: 0;
     font-size: 11px;
   }
+  /* User menu — now positioned absolutely in the top-right of the daystrip-wrap,
+     where the budget used to sit. Sits above the daystrip strip itself. */
+  .daystrip-wrap .user-menu {
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    z-index: 5;
+    background: var(--bg);
+  }
 
   .daystrip {
     position: relative;
@@ -2242,8 +2418,8 @@
     user-select: none;
     cursor: crosshair;
     overflow: hidden;
-    /* Leave room for eyebrow on left and budget on right */
-    margin: 0 132px 0 84px;
+    /* Leave room for budget on left (~132px) and the user menu pill on right (~132px) */
+    margin: 0 132px 0 132px;
     border-left: 1px solid var(--line-soft);
     border-right: 1px solid var(--line-soft);
   }
@@ -2505,12 +2681,16 @@
   @media (max-width: 900px) {
     :root { --daystrip-h: 44px; }
     .daystrip { margin: 0 12px; }
-    .daystrip-eyebrow { display: none; } /* tight on mobile, hide eyebrow */
+    /* Eyebrow is gone (removed in v159), so this rule is harmless legacy */
+    .daystrip-eyebrow { display: none; }
     .daystrip-budget {
-      right: 10px;
+      left: 10px;
       font-size: 9px;
     }
     .daystrip-budget em { font-size: 10px; }
+    .daystrip-wrap .user-menu {
+      right: 10px;
+    }
     .daystrip-block { top: 10px; bottom: 4px; }
   }
 
@@ -2518,6 +2698,7 @@
   /* ============ STATS VIEW ============ */
   .stats-page {
     max-width: 1100px;
+    /* Centered in the page (reverted from left-align in v120) */
     margin: 0 auto;
     padding: 16px 0 60px;
   }
@@ -2621,9 +2802,330 @@
     padding: 32px 28px;
   }
 
+  /* ============ QUESTS NOTEBOOK ============
+     A free-form notebook of quest ideas. Each line is an editable entry.
+     Right-click any line to pin it as an active quest (max 5). */
+  .quests-notebook {
+    max-width: 760px;
+    /* Centered in the page (reverted from left-align in v120) */
+    margin: 0 auto;
+    padding: 16px 0 120px;
+  }
+  .quests-notebook-title {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 56px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin: 16px 0 8px;
+  }
+  .quests-notebook-title em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .quests-notebook-prompt {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    margin: 0 0 32px;
+  }
+  .quests-notebook-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 16px;
+  }
+  /* Single quest idea row — text + optional pin indicator + colored dot if pinned */
+  .quest-idea {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 2px;
+    border-left: 2px solid transparent;
+    cursor: default;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .quest-idea:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .quest-idea.is-pinned {
+    /* Subtle visual cue that this idea is currently an active quest */
+    border-left-color: var(--quest-color, var(--accent));
+  }
+  /* Completion checkbox — small rounded square at the start of each row.
+     Unchecked: hollow outline. Checked: filled with the quest's color (or
+     accent for unpinned/unclassified ideas) and shows a ✓ glyph. */
+  .quest-idea-check {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: 1.5px solid var(--line);
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.18s;
+  }
+  .quest-idea-check:hover {
+    border-color: var(--quest-color, var(--accent));
+    background: rgba(212, 255, 58, 0.04);
+  }
+  .quest-idea-check:active {
+    transform: scale(0.92);
+  }
+  .quest-idea-check.is-checked {
+    background: var(--quest-color, var(--accent));
+    border-color: var(--quest-color, var(--accent));
+    color: var(--bg);
+  }
+  .quest-idea-check.is-checked:hover {
+    /* Subtle dim so the user can tell hovering is still uncheckable */
+    background: var(--quest-color, var(--accent));
+    filter: brightness(0.9);
+  }
+
+  /* Completed state for the whole row: strike-through, dimmed text.
+     Border stripe keeps the quest color so the entry's identity persists. */
+  .quest-idea.is-completed .quest-idea-text {
+    text-decoration: line-through;
+    text-decoration-color: var(--quest-color, rgba(212, 255, 58, 0.5));
+    text-decoration-thickness: 1.5px;
+    color: var(--ink-faint);
+  }
+  .quest-idea.is-completed .quest-idea-pin {
+    opacity: 0.4;
+  }
+  .quest-idea.is-completed .quest-idea-date {
+    opacity: 0.5;
+  }
+  /* When a row is in its completion celebration moment — brief gold glow */
+  .quest-idea.is-just-completed {
+    animation: quest-idea-celebrate 0.8s ease-out;
+  }
+  @keyframes quest-idea-celebrate {
+    0%   { background: transparent; box-shadow: 0 0 0 0 transparent; }
+    30%  {
+      background: rgba(212, 255, 58, 0.12);
+      box-shadow: 0 0 20px rgba(212, 255, 58, 0.25);
+    }
+    100% { background: transparent; box-shadow: 0 0 0 0 transparent; }
+  }
+
+  /* Left-side marker slot. Empty for unpinned ideas (just spacing for alignment),
+     shows the pin index number for pinned ideas in the quest's color. */
+  .quest-idea-pin {
+    flex-shrink: 0;
+    width: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--quest-color, var(--ink-faint));
+    /* Slight breathing room from the title text */
+    margin-right: 2px;
+  }
+  .quest-idea-pin.is-number {
+    /* Subtle glow behind the number reinforces the "this is pinned" status */
+    text-shadow: 0 0 8px var(--quest-color, transparent);
+  }
+  .quest-idea-text {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--serif);
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--ink);
+    /* Editable inline — quest ideas are quick text, no detail modal needed */
+    outline: none;
+    cursor: text;
+    caret-color: var(--accent);
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+  .quest-idea.is-pinned .quest-idea-text {
+    color: var(--ink);
+  }
+  /* Right-side date stamp — "14-Sep-26" — shows when the idea was first logged.
+     Small mono caps, faint color, doesn't compete for attention with the text. */
+  .quest-idea-date {
+    flex-shrink: 0;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    /* Slight padding-left so date doesn't crash into title text */
+    padding-left: 12px;
+  }
+  /* Add-new-idea row */
+  .quests-notebook-add {
+    padding-top: 8px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .quests-notebook-add input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 10px 12px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--ink);
+    caret-color: var(--accent);
+  }
+  .quests-notebook-add input::placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+
+  /* ============ PINNED QUEST TAB BAR ============
+     Fixed to the bottom of the viewport on desktop. Holds up to 5 active
+     quests. Each tab gets its own accent color from the palette below.
+     Click a tab to open that Quest's detail page. */
+  .pinned-quest-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 90;
+    display: flex;
+    gap: 4px;
+    padding: 0;
+    pointer-events: none; /* tabs themselves restore pointer events */
+  }
+  .pinned-quest-tab {
+    pointer-events: auto;
+    min-width: 130px;
+    max-width: 180px;
+    /* Left padding makes room for the index glyph sitting nearly flush
+       with the tab's left edge */
+    padding: 10px 14px 12px 26px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-bottom: none;
+    border-top: 2px solid var(--quest-color, var(--accent));
+    border-radius: 4px 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    cursor: pointer;
+    /* Slower easing on the duck/lift so the focus shift feels deliberate */
+    transition: background 0.25s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+                opacity 0.25s, filter 0.25s, border-color 0.25s;
+    position: relative;
+    overflow: visible;
+  }
+  .pinned-quest-tab:hover {
+    background: var(--bg-soft);
+    transform: translateY(-3px);
+  }
+
+  /* When one tab is active, siblings duck slightly and dim — directing
+     focus to the selected quest. The bar uses :has() to detect the active
+     state and apply sibling styling without needing extra JS. */
+  .pinned-quest-bar:has(.pinned-quest-tab.is-active) .pinned-quest-tab:not(.is-active) {
+    transform: translateY(3px);
+    opacity: 0.45;
+    filter: saturate(0.6);
+  }
+  .pinned-quest-bar:has(.pinned-quest-tab.is-active) .pinned-quest-tab:not(.is-active):hover {
+    /* Even when ducked, hovering a sibling should still feel responsive */
+    opacity: 0.75;
+    transform: translateY(0);
+  }
+
+  /* The active tab lifts more decisively than a hover — focal weight */
+  .pinned-quest-tab.is-active {
+    background: var(--bg-soft);
+    transform: translateY(-6px);
+    /* A whisper of accent-tinted glow underneath reinforces the selection */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35),
+                0 0 0 0 var(--quest-color, var(--accent));
+  }
+  .pinned-quest-tab-name {
+    font-family: var(--serif);
+    font-size: 13px;
+    line-height: 1.2;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pinned-quest-tab-meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  /* Index — typographic glyph rendered with a strongly debossed feel, like
+     the number was punched INTO the tab surface. Full quest color saturation
+     (no opacity reduction so the color reads true), with layered shadows
+     creating a deep sunken effect. */
+  .pinned-quest-tab-index {
+    position: absolute;
+    left: -3px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--serif);
+    font-size: 32px;
+    font-weight: 500;
+    line-height: 1;
+    /* True quest color, full opacity — no dimming, no blend mode. */
+    color: var(--quest-color, var(--accent));
+    /* Strong deboss effect built from layered shadows:
+       - Two dark inner shadows above (top edge of the indent, deeper feel)
+       - One bright highlight below (light catching the bottom lip of the indent)
+       The doubled dark shadow gives more sense of depth than a single one. */
+    text-shadow:
+      0 -1px 0 rgba(0, 0, 0, 0.85),
+      0 -2px 3px rgba(0, 0, 0, 0.5),
+      0 1px 0 rgba(255, 255, 255, 0.12),
+      0 2px 4px rgba(255, 255, 255, 0.04);
+    pointer-events: none;
+    transition: transform 0.15s, text-shadow 0.15s;
+  }
+  /* On hover/active, sharpen the imprint slightly */
+  .pinned-quest-tab:hover .pinned-quest-tab-index,
+  .pinned-quest-tab.is-active .pinned-quest-tab-index {
+    text-shadow:
+      0 -1px 0 rgba(0, 0, 0, 0.95),
+      0 -2px 4px rgba(0, 0, 0, 0.6),
+      0 1px 0 rgba(255, 255, 255, 0.18),
+      0 2px 4px rgba(255, 255, 255, 0.06);
+  }
+  .pinned-quest-tab-count {
+    color: var(--ink-faint);
+  }
+  /* Mobile: hide the bottom bar for now. Phase 2 will design a mobile-friendly
+     equivalent (likely a swipe-up sheet). */
+  @media (max-width: 700px) {
+    .pinned-quest-bar { display: none !important; }
+  }
+
   /* ============ JOURNAL VIEW ============ */
   .journal {
     max-width: 760px;
+    /* Centered in the page (reverted from left-align in v120) */
     margin: 0 auto;
     padding: 16px 0 60px;
   }
@@ -2840,14 +3342,29 @@
     cursor: pointer;
     border-radius: 3px;
     transition: background 0.15s, color 0.15s;
+    /* Reset button styling so button.task-ctx-item looks identical to div.task-ctx-item */
+    background: none;
+    border: none;
+    text-align: left;
+    width: 100%;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
   }
   .task-ctx-item:hover {
     background: rgba(212, 255, 58, 0.08);
     color: var(--ink);
   }
-  .task-ctx-item.danger:hover {
+  /* Both .danger (existing) and .is-danger (newer) for the destructive variant */
+  .task-ctx-item.danger:hover,
+  .task-ctx-item.is-danger:hover {
     background: rgba(248, 113, 113, 0.15);
     color: var(--pain-5);
+  }
+  .task-ctx-item.is-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
   }
   .task-ctx-icon {
     font-size: 10px;
@@ -2979,9 +3496,10 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    margin-left: 12px;
     background: var(--ink-faint);
     transition: background 0.2s, box-shadow 0.2s;
+    /* Pin to baseline so it sits next to the avatar circle, not down at level-value height */
+    align-self: center;
   }
   .sync-indicator.is-syncing {
     background: var(--accent);
@@ -2999,37 +3517,44 @@
   /* ============ USER MENU ============ */
   .user-menu {
     position: relative;
-    margin-left: 12px;
+    align-self: center;
   }
+  /* Trigger — rectangular pill matching the budget pill's visual language
+     on the left side of the daystrip. Click opens the dropdown. */
   .user-menu-trigger {
-    width: 28px;
-    height: 28px;
     padding: 0;
     background: transparent;
-    border: 1px solid var(--line);
-    border-radius: 50%;
+    border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
-    transition: border-color 0.15s;
-    overflow: hidden;
+    transition: opacity 0.15s;
   }
   .user-menu-trigger:hover {
-    border-color: var(--accent);
+    opacity: 0.75;
   }
+  /* Avatar / label inside the trigger — rectangular text pill in the same
+     style as .daystrip-budget on the left side. */
   .user-menu-avatar {
-    width: 100%;
-    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: var(--mono);
     font-size: 10px;
-    letter-spacing: 0;
+    letter-spacing: 0.15em;
     color: var(--ink-dim);
-    background: var(--bg-card);
     text-transform: uppercase;
+    background: transparent;
+    border: none;
+    padding: 0;
+    white-space: nowrap;
+    /* Small accent caret to suggest "this opens a dropdown" */
+  }
+  .user-menu-avatar::after {
+    content: ' ▾';
+    color: var(--ink-faint);
+    margin-left: 4px;
+    font-size: 9px;
   }
   .user-menu-dropdown {
     position: absolute;
@@ -3997,6 +4522,45 @@
     color: var(--bg);
   }
 
+  /* Focus mode comments — composer + thread, scoped to the focused task.
+     Visual language matches the task detail modal's activity section so
+     the user can post comments in either surface and they feel consistent. */
+  .focus-comments {
+    margin-top: 48px;
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .focus-comments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .focus-comments-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .focus-comments-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--ink-dim);
+  }
+  /* Composer inside focus mode picks up the same .activity-composer styling.
+     The thread also reuses .activity-thread + .activity-entry rules from the
+     task detail modal, so no duplicate styling needed here. */
+  .focus-comments-thread {
+    /* Reset any inherited margin so the thread sits flush below the composer */
+    margin-top: 0;
+  }
+  /* When the focus mode is on a dark backdrop, the composer textarea's
+     --bg-soft background sits well already. No override needed. */
+
   .focus-log {
     margin-top: 56px;
     width: 100%;
@@ -4039,7 +4603,65 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 8px;
+    /* Tightened so the mini pill sits just above the cat's head rather than
+       floating with a wide gap. */
+    gap: 4px;
+  }
+  /* Minimized state timer pill — visible while focus mode is "running in
+     background" (timer ticking, overlay hidden). Sits centered above the cat
+     in the same corner cluster, just above its head. Click to re-enter. */
+  .focus-mini-pill {
+    display: flex;
+    flex-direction: column;
+    /* Content centered inside the pill (was flex-end which right-aligned
+       the time and task title) */
+    align-items: center;
+    gap: 2px;
+    padding: 8px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.12s;
+    max-width: 220px;
+    /* Break out of the parent's align-items: flex-end so the pill centers
+       horizontally over the 160px cat frame instead of right-anchoring. */
+    align-self: center;
+    /* Nudge right by ~12px to align with the cat's perceived center. The cat
+       body sits roughly centered in its 160px frame, but the tail curl
+       extends rightward (to x=132), shifting the visual mass right of frame
+       center. Without this nudge the pill looks left-skewed over the cat. */
+    margin-right: -12px;
+    /* Defeats the default <button> styling reset */
+    font: inherit;
+    color: inherit;
+  }
+  .focus-mini-pill:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .focus-mini-pill-elapsed {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .focus-mini-pill-task {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    /* Single-line truncate so long task titles don't blow up the pill width */
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .focus-cat-frame {
     width: 160px;
@@ -4363,8 +4985,18 @@
 </div>
 
 <div class="daystrip-wrap" id="daystripWrap" title="Drag empty space to mark time away. Drag a block to move. × or right-click to remove. Click a block to add a note.">
-  <span class="daystrip-eyebrow">Today</span>
+  <!-- Left side: free-time budget (replaces the old 'Today' eyebrow) -->
   <span class="daystrip-budget" id="daystripBudget">free · <em>—</em></span>
+  <!-- Right side: user menu (relocated from header). Shown only when signed in. -->
+  <div class="user-menu" id="userMenu" style="display:none">
+    <button class="user-menu-trigger" id="userMenuTrigger" title="Account">
+      <span class="user-menu-avatar" id="userMenuAvatar"></span>
+    </button>
+    <div class="user-menu-dropdown" id="userMenuDropdown" style="display:none">
+      <div class="user-menu-email" id="userMenuEmail"></div>
+      <button class="user-menu-item" id="signOutBtn">Sign out</button>
+    </div>
+  </div>
   <div class="daystrip" id="daystrip">
     <div class="daystrip-hours" id="daystripHours"></div>
     <div class="daystrip-noon"></div>
@@ -4380,25 +5012,19 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v113</span>
+      <span class="eyebrow">— Kanban / v167</span>
       <h1>Quest <em>board.</em></h1>
     </div>
-    <div class="level-block">
-      <span class="label">Level</span>
-      <span class="value" id="levelValue">1</span>
-    </div>
-    <!-- Sync indicator — shows cloud-save status when not idle.
-         Three states: hidden (synced), syncing (visible briefly), error (red, persistent). -->
-    <div class="sync-indicator" id="syncIndicator" style="display:none" title=""></div>
-    <!-- User menu — shown only when signed in. Tiny, unobtrusive. -->
-    <div class="user-menu" id="userMenu" style="display:none">
-      <button class="user-menu-trigger" id="userMenuTrigger" title="Account">
-        <span class="user-menu-avatar" id="userMenuAvatar"></span>
-      </button>
-      <div class="user-menu-dropdown" id="userMenuDropdown" style="display:none">
-        <div class="user-menu-email" id="userMenuEmail"></div>
-        <button class="user-menu-item" id="signOutBtn">Sign out</button>
+    <!-- Right-side cluster: level + sync indicator. User menu has moved
+         to the daystrip row (top-right of the daystrip-wrap). -->
+    <div class="header-right">
+      <div class="level-block">
+        <span class="label">Level</span>
+        <span class="value" id="levelValue">1</span>
       </div>
+      <!-- Sync indicator — shows cloud-save status when not idle.
+           Three states: hidden (synced), syncing (visible briefly), error (red). -->
+      <div class="sync-indicator" id="syncIndicator" style="display:none" title=""></div>
     </div>
   </header>
 
@@ -4411,30 +5037,37 @@
   </div>
 
   <div class="view-row">
-    <div class="view-toggle" id="viewToggle">
-      <button class="view-toggle-btn active" data-view="active">
-        Active <span class="count" id="activeCount">0</span>
-      </button>
-      <button class="view-toggle-btn" data-view="backlog">
-        Backlog <span class="count" id="backlogCount">0</span>
-      </button>
-    </div>
     <div class="view-nav">
-      <span class="view-nav-item" data-view-nav="stats" title="Stats — press S">Stats</span>
+      <span class="view-nav-item" data-view-nav="board" title="Board — press A for Active">Board</span>
+      <span class="view-nav-item" data-view-nav="quests" title="Quests — press E">Quests</span>
       <span class="view-nav-item" data-view-nav="journal" title="Journal — press R">Journal</span>
+      <span class="view-nav-item" data-view-nav="stats" title="Stats — press S">Stats</span>
     </div>
   </div>
 
-  <!-- Weekly Vision — 3 outcomes that anchor the week. Shown only on Active view. -->
-  <section class="weekly-vision" id="weeklyVision" data-view-target="active">
+  <!-- Weekly Vision — 3 outcomes that anchor the week. Shown on both Active
+       and Backlog views so the user's outcome focus is always in sight while
+       working through tasks, regardless of which tab is open. -->
+  <section class="weekly-vision" id="weeklyVision" data-view-target="active backlog">
     <div class="wv-header">
       <h2 class="wv-title">Weekly <em>outcomes</em><span class="wv-count" id="wvCount"></span></h2>
-      <p class="wv-prompt">What three outcomes will define this week?</p>
     </div>
     <div class="wv-outcomes" id="wvOutcomes">
       <!-- Three outcome cards rendered here -->
     </div>
   </section>
+
+  <!-- Board tabs — Active / Backlog. Sits directly on top of the kanban
+       board (or the backlog list when in Backlog view). Styled like attached
+       tabs so the active one visually connects to the surface below. -->
+  <div class="board-tabs" id="viewToggle">
+    <button class="view-toggle-btn active" data-view="active">
+      Active <span class="count" id="activeCount">0</span>
+    </button>
+    <button class="view-toggle-btn" data-view="backlog">
+      Backlog <span class="count" id="backlogCount">0</span>
+    </button>
+  </div>
 
   <div class="board" id="board" data-view-target="active">
     <div class="column" data-col="todo">
@@ -4446,12 +5079,6 @@
       <div class="add-task">
         <div class="add-row">
           <input class="add-input" data-add="todo" placeholder="+ new" maxlength="140">
-          <div class="type-select">
-            <div class="type-toggle" data-type-toggle="todo">
-              <button class="type-toggle-btn active" data-type="task">task</button>
-              <button class="type-toggle-btn" data-type="quest">quest</button>
-            </div>
-          </div>
           <div class="pain-select" data-pain-select="todo">
             <span class="pain-select-label">Pain</span>
             <div class="pain-select-pips"></div>
@@ -4491,12 +5118,6 @@
     <div class="add-task backlog-add">
       <div class="add-row">
         <input class="add-input" data-add="backlog" placeholder="+ new" maxlength="140">
-        <div class="type-select">
-          <div class="type-toggle" data-type-toggle="backlog">
-            <button class="type-toggle-btn active" data-type="task">task</button>
-            <button class="type-toggle-btn" data-type="quest">quest</button>
-          </div>
-        </div>
         <div class="pain-select" data-pain-select="backlog">
           <span class="pain-select-label">Pain</span>
           <div class="pain-select-pips"></div>
@@ -4554,6 +5175,18 @@
         </aside>
       </div>
 
+      <!-- Sub-tabs for the Quest detail page: Active board vs Backlog list,
+           mirroring the main board's tabs. The user can toggle to see this
+           Quest's child tasks in either surface. -->
+      <div class="board-tabs" id="questViewToggle">
+        <button class="view-toggle-btn active" data-quest-view="active">
+          Active <span class="count" data-quest-view-count="active">0</span>
+        </button>
+        <button class="view-toggle-btn" data-quest-view="backlog">
+          Backlog <span class="count" data-quest-view-count="backlog">0</span>
+        </button>
+      </div>
+
       <div class="board" id="questBoard">
         <div class="column" data-quest-col="todo">
           <div class="column-header">
@@ -4593,6 +5226,26 @@
           <div class="column-body" data-quest-body="done"></div>
         </div>
       </div>
+
+      <!-- Quest-scoped backlog board — shown when the Quest's Backlog sub-tab
+           is selected. Same visual language as the main board's backlog.
+           Filtered to this Quest's children only. -->
+      <div class="backlog-board" id="questBacklogBoard" style="display:none">
+        <div class="backlog-header">
+          <span class="b-title">Backlog</span>
+          <span class="b-sub">parked items for this Quest — not counted in velocity</span>
+        </div>
+        <div class="backlog-body" id="questBacklogBody"></div>
+        <div class="add-task backlog-add">
+          <div class="add-row">
+            <input class="add-input" data-add="quest-backlog" placeholder="+new" maxlength="140">
+            <div class="pain-select" data-pain-select="quest-backlog">
+              <span class="pain-select-label">Pain</span>
+              <div class="pain-select-pips"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -4604,6 +5257,24 @@
     <div class="journal">
       <h1 class="journal-title">What you've <em>done.</em></h1>
       <div id="journalBody"></div>
+    </div>
+  </div>
+
+  <!-- Quests notebook view — a free-form list of quest ideas. Right-click
+       a line to pin it to the bottom tab bar (max 5 active quests). -->
+  <div data-view-target="quests" style="display:none">
+    <div class="breadcrumb">
+      <button class="breadcrumb-back" id="questsBack">← Quest board</button>
+    </div>
+    <div class="quests-notebook">
+      <h1 class="quests-notebook-title">Quest <em>ideas.</em></h1>
+      <p class="quests-notebook-prompt">Things you might want to take on. Right-click any line to pin it as an active quest.</p>
+      <div class="quests-notebook-list" id="questsNotebookList">
+        <!-- Existing quest ideas rendered here, one per line -->
+      </div>
+      <div class="quests-notebook-add">
+        <input type="text" id="questsNotebookInput" placeholder="+ new quest idea…" maxlength="200">
+      </div>
     </div>
   </div>
 
@@ -4650,10 +5321,16 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v113</span>
+      <span class="footer-version">v167</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
+</div>
+
+<!-- Pinned quest tab bar — fixed to bottom of viewport.
+     Holds up to 5 pinned quests. Click a tab to open that Quest's detail page. -->
+<div class="pinned-quest-bar" id="pinnedQuestBar" style="display:none">
+  <!-- Tabs rendered here -->
 </div>
 
 <div class="cat-companion" id="catCompanion">
@@ -4890,7 +5567,7 @@
       <div class="task-detail-top-main">
         <div class="task-detail-eyebrow" id="taskDetailEyebrow">Task</div>
         <input type="text" class="task-detail-title" id="taskDetailTitle" placeholder="Untitled" maxlength="200">
-        <textarea class="task-detail-desc" id="taskDetailDesc" placeholder="Add notes, context, anything that helps you remember…"></textarea>
+        <textarea class="task-detail-desc" id="taskDetailDesc" placeholder="Inscribe the details — anything worth remembering."></textarea>
       </div>
       <!-- Compact image cluster — corner attachment indicator.
            Click any thumb to expand. Paste/drop anywhere on the modal. -->
@@ -4916,7 +5593,7 @@
         <textarea
           class="activity-composer-input"
           id="taskDetailCommentInput"
-          placeholder="Add a comment, status update, or note…"
+          placeholder="The chronicle is empty. Strike the first mark.."
           rows="1"></textarea>
         <button class="activity-composer-submit" id="taskDetailCommentSubmit" disabled>Post</button>
       </div>
@@ -4966,6 +5643,28 @@
     <div class="focus-actions">
       <button class="focus-action-btn primary" id="focusMarkDone">Mark task done</button>
     </div>
+
+    <!-- Comments section: same composer + thread pattern as the task detail
+         modal, but scoped to the focused task. Only comments (kind:'comment')
+         show here — focus check-ins live separately in .focus-log below. -->
+    <div class="focus-comments" id="focusComments">
+      <div class="focus-comments-header">
+        <span class="focus-comments-label">Comments</span>
+        <span class="focus-comments-count" id="focusCommentsCount"></span>
+      </div>
+      <div class="activity-composer focus-activity-composer">
+        <textarea
+          class="activity-composer-input"
+          id="focusCommentInput"
+          placeholder="The chronicle is empty. Strike the first mark.."
+          rows="1"></textarea>
+        <button class="activity-composer-submit" id="focusCommentSubmit" disabled>Post</button>
+      </div>
+      <div class="activity-thread focus-comments-thread" id="focusCommentsThread">
+        <!-- Comment entries rendered here, newest-first -->
+      </div>
+    </div>
+
     <div class="focus-log" id="focusLog" style="display:none">
       <div class="focus-log-label">Session notes</div>
       <div id="focusLogList"></div>
@@ -4975,6 +5674,14 @@
 
 <!-- Working cat companion (only shows in focus mode) -->
 <div class="focus-cat" id="focusCat" style="display:none">
+  <!-- Minimized timer pill: shown only when focus mode is minimized (overlay
+       hidden, timer still running). Click to re-enter fullscreen. The big
+       elapsed counter is the primary visual; the task title sits below as
+       smaller context. Sits above the cat in the same bottom-right cluster. -->
+  <button class="focus-mini-pill" id="focusMiniPill" style="display:none" title="Click or press F to re-open fullscreen">
+    <span class="focus-mini-pill-elapsed" id="focusMiniPillElapsed">0:00</span>
+    <span class="focus-mini-pill-task" id="focusMiniPillTask"></span>
+  </button>
   <span class="focus-cat-pat-indicator">pat me — 15min check-in</span>
   <div class="focus-cat-frame" id="focusCatFrame">
     <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
@@ -5139,8 +5846,15 @@
     document.body.classList.add('signed-in');
     const gate = document.getElementById('authGate');
     if (gate) gate.setAttribute('aria-hidden', 'true');
+    // Show the user menu with placeholder values so the header layout
+    // matches what a real signed-in user sees. This keeps any visual
+    // tweaks made in dev mode applicable to the real production layout.
     const userMenu = document.getElementById('userMenu');
-    if (userMenu) userMenu.style.display = 'none';
+    const avatar = document.getElementById('userMenuAvatar');
+    const emailLabel = document.getElementById('userMenuEmail');
+    if (userMenu) userMenu.style.display = '';
+    if (avatar) avatar.textContent = 'dev'; // dev mode placeholder
+    if (emailLabel) emailLabel.textContent = 'dev@local.test';
     window.__authBypassed = true;
     if (window.__startKanbanApp && !window.__kanbanBooted) {
       window.__kanbanBooted = true;
@@ -5236,6 +5950,12 @@ signInBtn.addEventListener('click', async () => {
 
 // ---- Sign-out flow ----
 signOutBtn.addEventListener('click', async () => {
+  // In dev mode there's no real session — just reload so the page re-enters
+  // dev mode cleanly. Useful as a "reset header to fresh state" button.
+  if (window.__devMode) {
+    window.location.reload();
+    return;
+  }
   await supabase.auth.signOut();
   // Reload to clear all in-memory state and snapshot caches. This is the
   // simplest, safest way to ensure the next sign-in starts with no traces
@@ -5259,8 +5979,9 @@ function applySession(session) {
     gate.setAttribute('aria-hidden', 'true');
     userMenu.style.display = '';
     const email = session.user.email || '';
-    const initial = (email[0] || '?').toUpperCase();
-    avatar.textContent = initial;
+    // Use the username portion (before @) as the label. Falls back to '?'.
+    const username = email.split('@')[0] || '?';
+    avatar.textContent = username;
     emailLabel.textContent = email;
     // Boot the kanban app once (the existing script exposes __startKanbanApp)
     if (window.__startKanbanApp && !window.__kanbanBooted) {
@@ -5315,8 +6036,145 @@ let state = {
   weeklyVision: null,   // { weekKey, outcomes: [{id, text, createdAt, achievedAt}] }
   visionHistory: [],    // [{ weekKey, outcomes: [...] }, ...] — past weeks for the Journal
 };
-let pendingPain = { todo: 3, backlog: 3, 'quest-todo': 3 };
+let pendingPain = { todo: 3, backlog: 3, 'quest-todo': 3, 'quest-backlog': 3 };
 let pendingType = { todo: 'task', backlog: 'task' };
+
+// ============ PINNED QUESTS ============
+// Up to 5 quests can be "pinned" — they show as tabs at the bottom of the
+// viewport and accept the keyboard-shortcut assignment (mouse over a task,
+// press 1-5). Each pinned quest gets a color from this palette, auto-assigned
+// in pin order. Users can change colors later via right-click.
+const MAX_PINNED_QUESTS = 5;
+const QUEST_COLORS = [
+  '#d4ff3a',  // chartreuse (the app's existing accent — slot 1 by default)
+  '#9bc89b',  // sage green
+  '#8eb3d4',  // dusty blue
+  '#c89696',  // muted rose/maroon (slot 4 — replaced teal v165, now lives in
+              //                    the warm-rose family alongside plum)
+  '#c896c8',  // muted plum
+];
+// Returns the color hex for a given quest, falling back to the accent
+function questColorFor(t) {
+  if (typeof t.colorIndex === 'number' && QUEST_COLORS[t.colorIndex]) {
+    return QUEST_COLORS[t.colorIndex];
+  }
+  return QUEST_COLORS[0];
+}
+// Convert a hex color (#RRGGBB or #RGB) to a comma-separated "r, g, b" string
+// for use in rgba(var(--xxx-rgb), 0.5) patterns. Handles invalid input
+// gracefully by returning a fallback that maps to the accent chartreuse.
+function hexToRgbTriplet(hex) {
+  if (!hex || typeof hex !== 'string') return '212, 255, 58';
+  let h = hex.trim().replace(/^#/, '');
+  if (h.length === 3) {
+    h = h.split('').map(c => c + c).join('');
+  }
+  if (h.length !== 6) return '212, 255, 58';
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return '212, 255, 58';
+  return `${r}, ${g}, ${b}`;
+}
+// Returns the next available pin index (0-4) for a new pin, or -1 if all full
+function nextAvailablePinIndex() {
+  const taken = new Set(
+    state.tasks
+      .filter(t => t.type === 'quest' && t.pinned && typeof t.pinIndex === 'number')
+      .map(t => t.pinIndex)
+  );
+  for (let i = 0; i < MAX_PINNED_QUESTS; i++) {
+    if (!taken.has(i)) return i;
+  }
+  return -1;
+}
+// Returns the next available color index (0-4), preferring unused colors
+function nextAvailableColorIndex() {
+  const taken = new Set(
+    state.tasks
+      .filter(t => t.type === 'quest' && t.pinned && typeof t.colorIndex === 'number')
+      .map(t => t.colorIndex)
+  );
+  for (let i = 0; i < QUEST_COLORS.length; i++) {
+    if (!taken.has(i)) return i;
+  }
+  return 0; // all taken, recycle
+}
+// Returns the quest pinned at a given index (0-4), or null
+function questAtPinIndex(idx) {
+  return state.tasks.find(t =>
+    t.type === 'quest' && t.pinned && t.pinIndex === idx
+  ) || null;
+}
+// Returns all pinned quests sorted by pinIndex
+function getPinnedQuests() {
+  return state.tasks
+    .filter(t => t.type === 'quest' && t.pinned)
+    .sort((a, b) => (a.pinIndex || 0) - (b.pinIndex || 0));
+}
+
+// Returns true if the given task is a child of a completed quest. When the
+// parent Quest is checked off in the notebook, its children stay in the data
+// but are filtered out of the main board / backlog / counts — preserving
+// the association silently. Unchecking the Quest reverses this automatically.
+function isOrphanedByCompletedQuest(t) {
+  if (!t.questId) return false;
+  const parent = state.tasks.find(p => p.id === t.questId && p.type === 'quest');
+  return !!(parent && parent.completedAt);
+}
+
+// Track which task card the mouse is currently over. Used by the keyboard
+// shortcut (1-5 to assign to a pinned quest, 0 to unlink). Set/cleared by
+// mouseenter/mouseleave handlers attached in renderTask().
+let hoveredTaskId = null;
+
+// Toggle the hovered task's link to the quest pinned at the given index.
+// Behavior:
+//   - Not linked yet → link to this quest
+//   - Already linked to a DIFFERENT quest → reassign to this one
+//   - Already linked to THIS quest → unlink (toggle off)
+// Silent no-op if no task is hovered, no quest is pinned at that index,
+// or the hovered "task" is itself a quest.
+function toggleHoveredTaskQuestLink(idx) {
+  if (!hoveredTaskId) return;
+  const task = state.tasks.find(t => t.id === hoveredTaskId);
+  if (!task || task.type === 'quest') return;
+  const quest = questAtPinIndex(idx);
+  if (!quest) return;
+  if (task.questId === quest.id) {
+    // Already linked here — toggle off
+    task.questId = undefined;
+    save();
+    render();
+    return;
+  }
+  // Link (or reassign from another quest)
+  task.questId = quest.id;
+  save();
+  render();
+  flashAssignmentFeedback(task.id, quest.id);
+}
+
+// Brief visual confirmation that an assignment registered. Used for the
+// hover-and-press shortcut so the user knows the action took effect.
+function flashAssignmentFeedback(taskId, questId) {
+  // Card flash: temporarily add a class that pulses the card's accent
+  // We need to find the card after the re-render that just happened
+  requestAnimationFrame(() => {
+    const card = document.querySelector(`.task[data-id="${taskId}"]`);
+    if (card) {
+      card.classList.add('just-linked');
+      setTimeout(() => card.classList.remove('just-linked'), 600);
+    }
+    // Tab pulse: the matching pinned tab briefly brightens
+    const tab = document.querySelector(`.pinned-quest-tab[data-quest-id="${questId}"]`);
+    if (tab) {
+      tab.classList.add('just-received');
+      setTimeout(() => tab.classList.remove('just-received'), 600);
+    }
+  });
+}
+
 // UI-only: which tasks have their description in edit mode (not persisted)
 let editingDesc = new Set();
 // UI-only: current view ('active' | 'backlog' | 'quest' | 'journal' | 'stats')
@@ -5331,6 +6189,9 @@ let dayStripBlocks = [];
 let dayStripKey = null;
 // UI-only: when currentView === 'quest', which quest is open
 let currentQuestId = null;
+// UI-only: which sub-tab is selected inside a Quest detail page ('active' | 'backlog').
+// Defaults to 'active' each time a Quest is opened.
+let currentQuestSubView = 'active';
 // UI-only: id of the currently-dragging task (for dragover targets to inspect)
 let currentDraggedTaskId = null;
 
@@ -5652,6 +6513,10 @@ function taskToRow(t, userId) {
     url: t.url || null,
     focus_log: Array.isArray(t.focusLog) ? t.focusLog : [],
     attachments: Array.isArray(t.attachments) ? t.attachments : [],
+    // v118: pinned-quest fields (only meaningful for type === 'quest')
+    pinned: !!t.pinned,
+    pin_index: typeof t.pinIndex === 'number' ? t.pinIndex : null,
+    color_index: typeof t.colorIndex === 'number' ? t.colorIndex : null,
   };
 }
 function rowToTask(r) {
@@ -5670,6 +6535,9 @@ function rowToTask(r) {
     url: r.url || undefined,
     focusLog: Array.isArray(r.focus_log) ? r.focus_log : [],
     attachments: Array.isArray(r.attachments) ? r.attachments : [],
+    pinned: !!r.pinned,
+    pinIndex: typeof r.pin_index === 'number' ? r.pin_index : undefined,
+    colorIndex: typeof r.color_index === 'number' ? r.color_index : undefined,
   };
 }
 function visionToRow(v, userId) {
@@ -6333,10 +7201,13 @@ function render() {
   const sevenDayV = range.days === 7 ? v : computeVelocity(7);
   updateCatMood(sevenDayV.painThis);
 
-  // Columns — main board only shows TOP-LEVEL items (no questId, not backlog)
+  // Columns — main board shows top-level TASKS. As of v132, tasks linked to
+  // a Quest (questId set) ALSO appear here with a subtle colored stripe,
+  // rather than being hidden under their Quest. The Quest detail page still
+  // shows all its children. Quest-type entries themselves stay in the notebook.
   ['todo','doing','blocked','done'].forEach(col => {
     const body = document.querySelector(`[data-body="${col}"]`);
-    const list = state.tasks.filter(t => t.col === col && !t.backlog && !t.questId && passesPainFilter(t));
+    const list = state.tasks.filter(t => t.col === col && !t.backlog && t.type !== 'quest' && !isOrphanedByCompletedQuest(t) && passesPainFilter(t));
     document.querySelector(`[data-count="${col}"]`).textContent = list.length;
     body.innerHTML = '';
     if (list.length === 0 && col === 'done') {
@@ -6353,9 +7224,9 @@ function render() {
     list.forEach(t => body.appendChild(renderTask(t)));
   });
 
-  // Backlog
+  // Backlog — also excludes quest-type items (v119)
   const backlogBody = document.getElementById('backlogBody');
-  const backlogList = state.tasks.filter(t => t.backlog && passesPainFilter(t));
+  const backlogList = state.tasks.filter(t => t.backlog && t.type !== 'quest' && !isOrphanedByCompletedQuest(t) && passesPainFilter(t));
   backlogBody.innerHTML = '';
   if (backlogList.length === 0) {
     const e = document.createElement('div');
@@ -6366,9 +7237,11 @@ function render() {
     backlogList.forEach(t => backlogBody.appendChild(renderTask(t)));
   }
 
-  // View counts (active = top-level, non-backlog items; ignore filter so users see real totals)
-  const activeTotal = state.tasks.filter(t => !t.backlog && !t.questId).length;
-  const backlogTotal = state.tasks.filter(t => t.backlog).length;
+  // View counts. Active and Backlog tallies exclude quest-type items AND
+  // tasks whose parent Quest is currently completed (those are silently
+  // hidden from the main board / backlog — see Option B in v141 design notes).
+  const activeTotal = state.tasks.filter(t => !t.backlog && t.type !== 'quest' && !isOrphanedByCompletedQuest(t)).length;
+  const backlogTotal = state.tasks.filter(t => t.backlog && t.type !== 'quest' && !isOrphanedByCompletedQuest(t)).length;
   document.getElementById('activeCount').textContent = activeTotal;
   document.getElementById('backlogCount').textContent = backlogTotal;
 
@@ -6383,14 +7256,34 @@ function render() {
 
   // Hide view-toggle while inside a Quest or Journal
   const viewToggle = document.getElementById('viewToggle');
-  if (viewToggle) viewToggle.style.display = (currentView === 'quest' || currentView === 'journal' || currentView === 'stats') ? 'none' : 'inline-flex';
+  if (viewToggle) viewToggle.style.display = (currentView === 'quest' || currentView === 'journal' || currentView === 'stats' || currentView === 'quests') ? 'none' : 'flex';
 
   // Toggle body class for ambient Quest background
   document.body.classList.toggle('in-quest', currentView === 'quest');
 
-  // View visibility
+  // When inside a Quest, propagate that quest's color to CSS variables so
+  // ambient backgrounds, container accents, and the top hairline all match
+  // the quest's identity. Outside a Quest, clear the variables so nothing
+  // accidentally inherits stale color.
+  if (currentView === 'quest' && currentQuestId) {
+    const quest = state.tasks.find(t => t.id === currentQuestId);
+    if (quest) {
+      const qc = questColorFor(quest);
+      document.body.style.setProperty('--current-quest-color', qc);
+      // Build a comma-separated RGB triplet so we can use rgba(...) anywhere
+      // that needs an alpha-modulated variant of the same color.
+      document.body.style.setProperty('--current-quest-color-rgb', hexToRgbTriplet(qc));
+    }
+  } else {
+    document.body.style.removeProperty('--current-quest-color');
+    document.body.style.removeProperty('--current-quest-color-rgb');
+  }
+
+  // View visibility — an element can target multiple views by listing them
+  // space-separated, e.g. data-view-target="active backlog" shows in both.
   document.querySelectorAll('[data-view-target]').forEach(el => {
-    el.style.display = el.dataset.viewTarget === currentView ? '' : 'none';
+    const targets = el.dataset.viewTarget.split(/\s+/);
+    el.style.display = targets.includes(currentView) ? '' : 'none';
   });
   document.querySelectorAll('.view-toggle-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === currentView);
@@ -6400,6 +7293,14 @@ function render() {
   // function is safe to call regardless; the banner is hidden by view-target)
   renderWeeklyVision();
 
+  // Quests notebook — render its content when active
+  if (currentView === 'quests') {
+    renderQuestsNotebook();
+  }
+  // Pinned quest tab bar — always re-render so the active highlight,
+  // task counts, and pin state stay in sync across view changes
+  renderPinnedQuestBar();
+
   // Pain filter UI sync
   document.querySelectorAll('.legend-item[data-pain]').forEach(item => {
     item.classList.toggle('active', activePainFilter !== null && Number(item.dataset.pain) === activePainFilter);
@@ -6407,9 +7308,18 @@ function render() {
   const legendClear = document.getElementById('legendClear');
   if (legendClear) legendClear.classList.toggle('show', activePainFilter !== null);
 
-  // View nav (vertical rail) sync — highlight active overlay view
+  // View nav (vertical rail) sync — highlight active overlay view. The Board
+  // nav item lights up when the user is on either the active or backlog tab
+  // (both are "the board" conceptually).
   document.querySelectorAll('.view-nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.viewNav === currentView);
+    const target = el.dataset.viewNav;
+    let isActive = false;
+    if (target === 'board') {
+      isActive = (currentView === 'active' || currentView === 'backlog');
+    } else {
+      isActive = (target === currentView);
+    }
+    el.classList.toggle('active', isActive);
   });
 
   renderPainSelects();
@@ -6457,15 +7367,32 @@ function renderTask(t) {
     + (isEditingDesc ? ' editing-desc' : '')
     + (isQuestClickable ? ' is-quest-clickable' : '')
     + (allChildrenDone ? ' has-ready-tasks' : '')
-    + (showUnlink ? ' has-unlink' : '');
+    + (showUnlink ? ' has-unlink' : '')
+    /* If this task is linked to a quest, mark it so the colored left stripe shows */
+    + (t.questId ? ' is-quest-linked' : '');
   el.draggable = !isEditingDesc;
   el.dataset.id = t.id;
+  // If linked to a pinned quest, propagate the quest's color via CSS variable
+  // so the subtle stripe + dot pick it up. Unpinned quests just use --accent.
+  if (t.questId) {
+    const parentQuest = state.tasks.find(x => x.id === t.questId && x.type === 'quest');
+    if (parentQuest) {
+      el.style.setProperty('--quest-color', questColorFor(parentQuest));
+    }
+  }
+  // Track hover so the keyboard shortcut (1-5 / 0) knows which task to act on
+  el.addEventListener('mouseenter', () => { hoveredTaskId = t.id; });
+  el.addEventListener('mouseleave', () => {
+    if (hoveredTaskId === t.id) hoveredTaskId = null;
+  });
 
   // Click anywhere on a Quest card (except interactive children) to open Quest view
   if (isQuestClickable) {
     el.addEventListener('click', (e) => {
-      // Don't open if click landed on an interactive element
-      if (e.target.closest('button, input, textarea, [contenteditable="true"], .pip, .pain-pips, .task-text, .task-desc-render')) return;
+      // Don't open if click landed on an interactive element. Note that
+      // .task-text is intentionally NOT in this exclusion list anymore —
+      // the title is part of the card surface, clicking it opens the Quest.
+      if (e.target.closest('button, input, textarea, [contenteditable="true"], .pip, .pain-pips, .task-desc-render')) return;
       openQuest(t.id);
     });
     // Quest card as a drop target — requires a hover dwell so accidental
@@ -6549,7 +7476,9 @@ function renderTask(t) {
     el.appendChild(eyebrow);
   }
 
-  // Title — editable on click
+  // Title — display only. The card is a solid object now: no inline editing
+  // by clicking the title. To edit the title, the user right-clicks the card
+  // (or just clicks anywhere on it) to open the detail modal, then edits there.
   const text = document.createElement('div');
   text.className = 'task-text';
   text.textContent = t.text;
@@ -6557,47 +7486,16 @@ function renderTask(t) {
     el.classList.add('is-link');
     // Show the full label on hover since the visible text is single-line clipped
     text.title = t.text;
-  } else {
-    text.title = 'Click to edit';
   }
-  text.addEventListener('click', (e) => {
-    if (text.getAttribute('contenteditable') === 'true') return;
-    e.stopPropagation();
-    text.setAttribute('contenteditable', 'true');
-    el.draggable = false;
-    text.focus();
-    const range = document.createRange();
-    range.selectNodeContents(text);
-    range.collapse(false);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-  });
-  const commitTitle = () => {
-    const newText = text.textContent.trim();
-    text.removeAttribute('contenteditable');
-    el.draggable = !editingDesc.has(t.id);
-    if (!newText) {
-      text.textContent = t.text;
-      return;
-    }
-    if (newText !== t.text) {
-      t.text = newText;
-      save();
-    }
-  };
-  text.addEventListener('blur', commitTitle);
-  text.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+  // Suppress any text selection that would otherwise begin on mousedown — the
+  // card should feel like a single tappable object, not a text field.
+  text.addEventListener('mousedown', (e) => {
+    // Allow normal interactions if the user is clicking the link icon or another
+    // explicit interactive child; just prevent the default text-selection.
+    if (!e.target.closest('a, button')) {
       e.preventDefault();
-      text.blur();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      text.textContent = t.text;
-      text.blur();
     }
   });
-  text.addEventListener('mousedown', (e) => e.stopPropagation());
 
   // For URL-tasks, wrap the title and a link-open icon in a row so they sit inline.
   if (t.url) {
@@ -6752,12 +7650,12 @@ function renderTask(t) {
   });
 
   // Single-click on a regular (non-quest) task card opens the detail overlay.
-  // Excludes clicks on interactive children — title editing, link icon, edit pencil,
-  // unlink button, pain pips — those should retain their own click behavior.
+  // The title is part of the card surface — clicking it also opens detail.
+  // Excludes clicks on truly interactive controls (link icon, buttons, pain pips).
   if (!isQuest) {
     el.addEventListener('click', (e) => {
       // Skip if the click landed on any interactive control inside the card
-      if (e.target.closest('button, input, textarea, a, [contenteditable="true"], .pip, .pain-pips, .task-text, .task-desc-render, .task-desc, .task-link-icon')) return;
+      if (e.target.closest('button, input, textarea, a, [contenteditable="true"], .pip, .pain-pips, .task-desc-render, .task-desc, .task-link-icon')) return;
       // Don't expand cards that are mid-drag
       if (el.classList.contains('dragging')) return;
       openTaskDetail(t.id);
@@ -6784,7 +7682,7 @@ function renderTask(t) {
 }
 
 function renderPainSelects() {
-  ['todo','backlog','quest-todo'].forEach(col => {
+  ['todo','backlog','quest-todo','quest-backlog'].forEach(col => {
     const wrap = document.querySelector(`[data-pain-select="${col}"] .pain-select-pips`);
     if (!wrap) return;
     wrap.innerHTML = '';
@@ -6813,9 +7711,11 @@ document.querySelectorAll('.add-input').forEach(input => {
     const text = input.value.trim();
     if (!text) return false;
     const source = input.dataset.add;
-    const isBacklog = source === 'backlog';
-    const isQuestInput = source === 'quest-todo';
-    const col = isBacklog ? 'todo' : (isQuestInput ? 'todo' : source);
+    const isBacklog = source === 'backlog' || source === 'quest-backlog';
+    const isQuestInput = source === 'quest-todo' || source === 'quest-backlog';
+    const col = (source === 'todo' || source === 'doing' || source === 'blocked' || source === 'done')
+      ? source
+      : 'todo';
 
     const newTask = {
       id: uid(),
@@ -6823,7 +7723,9 @@ document.querySelectorAll('.add-input').forEach(input => {
       col,
       backlog: isBacklog,
       questId: isQuestInput ? currentQuestId : null,
-      type: isQuestInput ? 'task' : (pendingType[source] || 'task'),
+      // v119: Main board / backlog / quest views only create tasks. Quest-type
+      // entries are created exclusively via the Quest Ideas notebook now.
+      type: 'task',
       pain: pendingPain[source] || 3,
       createdAt: nowMs(),
     };
@@ -6865,24 +7767,21 @@ document.querySelectorAll('.add-input').forEach(input => {
   });
 });
 
-// Type toggle clicks
-document.querySelectorAll('.type-toggle').forEach(toggle => {
-  const col = toggle.dataset.typeToggle;
-  toggle.querySelectorAll('.type-toggle-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      pendingType[col] = btn.dataset.type;
-      toggle.querySelectorAll('.type-toggle-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.type === pendingType[col]);
-      });
-    });
-  });
-});
+// v119: type-toggle click handler removed — toggles no longer exist in the UI.
 
-// View toggle clicks
+// View toggle clicks (main board only — matches buttons that have data-view)
 document.querySelectorAll('.view-toggle-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    currentView = btn.dataset.view;
-    render();
+    // Main-board tabs use data-view; Quest sub-tabs use data-quest-view.
+    // Distinguish so a click on the main tab doesn't trigger Quest tab logic
+    // (and vice versa).
+    if (btn.dataset.view) {
+      currentView = btn.dataset.view;
+      render();
+    } else if (btn.dataset.questView) {
+      currentQuestSubView = btn.dataset.questView;
+      render();
+    }
   });
 });
 
@@ -7148,6 +8047,8 @@ document.getElementById('catFrame').addEventListener('click', () => {
 function openQuest(questId) {
   currentQuestId = questId;
   currentView = 'quest';
+  // Reset sub-tab so a freshly-opened Quest always starts on its Active view
+  currentQuestSubView = 'active';
   // Scroll to top when entering a Quest
   window.scrollTo({ top: 0, behavior: 'smooth' });
   render();
@@ -7249,25 +8150,64 @@ function renderQuestView() {
   completeBtn.disabled = quest.col === 'done';
   completeBtn.style.opacity = quest.col === 'done' ? '0.5' : '1';
 
-  // Populate Quest columns
-  ['todo','doing','blocked','done'].forEach(col => {
-    const body = document.querySelector(`[data-quest-body="${col}"]`);
-    const list = children.filter(t => t.col === col && passesPainFilter(t));
-    document.querySelector(`[data-quest-count="${col}"]`).textContent = list.length;
-    body.innerHTML = '';
-    if (list.length === 0 && col === 'done') {
-      const e = document.createElement('div');
-      e.className = 'empty';
-      e.textContent = 'drag here to complete';
-      body.appendChild(e);
-    } else if (list.length === 0 && col === 'blocked') {
-      const e = document.createElement('div');
-      e.className = 'empty';
-      e.textContent = 'waiting on something — park it here';
-      body.appendChild(e);
-    }
-    list.forEach(t => body.appendChild(renderTask(t)));
+  // Populate Quest columns based on the active sub-tab.
+  // - 'active' sub-tab: kanban columns showing non-backlog children
+  // - 'backlog' sub-tab: backlog list showing children flagged as backlog
+  const isBacklogSubView = currentQuestSubView === 'backlog';
+  const activeChildren = children.filter(t => !t.backlog);
+  const backlogChildren = children.filter(t => t.backlog);
+
+  // Show/hide the two surfaces
+  const questBoard = document.getElementById('questBoard');
+  const questBacklogBoard = document.getElementById('questBacklogBoard');
+  if (questBoard) questBoard.style.display = isBacklogSubView ? 'none' : '';
+  if (questBacklogBoard) questBacklogBoard.style.display = isBacklogSubView ? '' : 'none';
+
+  // Update sub-tab counts and active state
+  document.querySelectorAll('#questViewToggle .view-toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.questView === currentQuestSubView);
   });
+  const activeCountEl = document.querySelector('[data-quest-view-count="active"]');
+  const backlogCountEl = document.querySelector('[data-quest-view-count="backlog"]');
+  if (activeCountEl) activeCountEl.textContent = activeChildren.length;
+  if (backlogCountEl) backlogCountEl.textContent = backlogChildren.length;
+
+  // Render the appropriate surface
+  if (isBacklogSubView) {
+    const backlogBody = document.getElementById('questBacklogBody');
+    if (backlogBody) {
+      backlogBody.innerHTML = '';
+      const list = backlogChildren.filter(t => passesPainFilter(t));
+      if (list.length === 0) {
+        const e = document.createElement('div');
+        e.className = 'backlog-empty';
+        e.textContent = 'nothing parked here yet — use the ↓ on any card to send it to the backlog';
+        backlogBody.appendChild(e);
+      } else {
+        list.forEach(t => backlogBody.appendChild(renderTask(t)));
+      }
+    }
+  } else {
+    // Active sub-tab: 4 columns, filter out backlog children
+    ['todo','doing','blocked','done'].forEach(col => {
+      const body = document.querySelector(`[data-quest-body="${col}"]`);
+      const list = activeChildren.filter(t => t.col === col && passesPainFilter(t));
+      document.querySelector(`[data-quest-count="${col}"]`).textContent = list.length;
+      body.innerHTML = '';
+      if (list.length === 0 && col === 'done') {
+        const e = document.createElement('div');
+        e.className = 'empty';
+        e.textContent = 'drag here to complete';
+        body.appendChild(e);
+      } else if (list.length === 0 && col === 'blocked') {
+        const e = document.createElement('div');
+        e.className = 'empty';
+        e.textContent = 'waiting on something — park it here';
+        body.appendChild(e);
+      }
+      list.forEach(t => body.appendChild(renderTask(t)));
+    });
+  }
 }
 
 function renderQuestHeroDesc(quest) {
@@ -7576,10 +8516,8 @@ function renderDetailActivity() {
     countEl.textContent = entries.length > 0 ? `${entries.length}` : '';
   }
   if (entries.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'activity-empty';
-    empty.textContent = 'No activity yet — add the first comment above.';
-    thread.appendChild(empty);
+    // No activity yet — render nothing. The composer placeholder above
+    // already invites the user to add the first entry.
     return;
   }
   // Only show the 5 most recent. Older entries stay in the Journal feed.
@@ -8080,6 +9018,25 @@ document.getElementById('taskDetailCommentInput').addEventListener('keydown', (e
 });
 document.getElementById('taskDetailCommentSubmit').addEventListener('click', submitComment);
 
+// Focus mode comment composer — mirrors the detail composer's wiring
+const focusCommentInputEl = document.getElementById('focusCommentInput');
+const focusCommentSubmitEl = document.getElementById('focusCommentSubmit');
+if (focusCommentInputEl && focusCommentSubmitEl) {
+  focusCommentInputEl.addEventListener('input', () => {
+    updateFocusComposerSubmitState();
+    // Auto-grow the textarea up to its CSS max-height
+    focusCommentInputEl.style.height = 'auto';
+    focusCommentInputEl.style.height = Math.min(focusCommentInputEl.scrollHeight, 200) + 'px';
+  });
+  focusCommentInputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitFocusComment();
+    }
+  });
+  focusCommentSubmitEl.addEventListener('click', submitFocusComment);
+}
+
 // File picker (+image button)
 document.getElementById('taskDetailImagesAddMini').addEventListener('click', () => {
   document.getElementById('taskDetailFilePicker').click();
@@ -8322,6 +9279,13 @@ function enterFocus(taskId) {
   focusTaskId = taskId;
   focusStartTs = nowMs();
   focusLastCheckpoint = focusStartTs;
+  // Reset the focus comment composer for a clean slate
+  const focusCommentInput = document.getElementById('focusCommentInput');
+  if (focusCommentInput) {
+    focusCommentInput.value = '';
+    focusCommentInput.style.height = '';
+  }
+  updateFocusComposerSubmitState();
   renderFocus();
   overlay.classList.add('show');
   catWrap.style.display = 'flex';
@@ -8337,6 +9301,65 @@ function enterFocus(taskId) {
   startFocusTimer();
 }
 
+// v163: Focus mode now supports a minimized state. Three operations:
+//
+//   minimizeFocusFullscreen() — hides the fullscreen overlay BUT keeps the
+//     timer running. A pill in the bottom-right corner (above the cat) shows
+//     the elapsed time. Triggered by right-click on the overlay, or pressing
+//     F while in fullscreen.
+//
+//   restoreFocusFullscreen() — brings the fullscreen overlay back. Triggered
+//     by pressing F while minimized, or clicking the pill.
+//
+//   exitFocus() — fully ends the session (timer stops, cat disappears).
+//     This is the only path triggered by Esc or the Exit button.
+function minimizeFocusFullscreen() {
+  if (!focusTaskId) return;
+  const overlay = document.getElementById('focusOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('show');
+  document.getElementById('focusSnippet').classList.remove('show');
+  // Unlock body scroll so user can interact with the main board
+  document.body.style.overflow = '';
+  document.body.classList.remove('focus-active');
+  // Show the mini pill and prime its values
+  const pill = document.getElementById('focusMiniPill');
+  if (pill) pill.style.display = 'flex';
+  updateFocusMiniPill();
+  // Re-render the main board so it's interactive again
+  render();
+}
+
+function restoreFocusFullscreen() {
+  if (!focusTaskId) return;
+  const overlay = document.getElementById('focusOverlay');
+  if (!overlay) return;
+  // Hide pill, show overlay
+  const pill = document.getElementById('focusMiniPill');
+  if (pill) pill.style.display = 'none';
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  document.body.classList.add('focus-active');
+  // Re-render focus content in case task data changed while minimized
+  renderFocus();
+}
+
+// Update the elapsed counter + task title on the mini pill. Called from
+// the focus timer tick AND on minimize entry.
+function updateFocusMiniPill() {
+  if (!focusTaskId) return;
+  const elapsedEl = document.getElementById('focusMiniPillElapsed');
+  const taskEl = document.getElementById('focusMiniPillTask');
+  if (elapsedEl) {
+    const elapsed = nowMs() - focusStartTs;
+    elapsedEl.textContent = formatFocusElapsed(elapsed);
+  }
+  if (taskEl) {
+    const t = state.tasks.find(x => x.id === focusTaskId);
+    taskEl.textContent = t ? (t.text || '') : '';
+  }
+}
+
 function exitFocus() {
   focusTaskId = null;
   if (focusTimerInterval) {
@@ -8348,6 +9371,9 @@ function exitFocus() {
   document.getElementById('focusCat').classList.remove('pat-ready');
   document.getElementById('focusCatFrame').classList.remove('pat-ready');
   document.getElementById('focusSnippet').classList.remove('show');
+  // Hide the mini pill too (in case we minimized then exited)
+  const pill = document.getElementById('focusMiniPill');
+  if (pill) pill.style.display = 'none';
   // Restore main cat
   const mainCat = document.getElementById('catCompanion');
   if (mainCat) mainCat.style.display = '';
@@ -8364,19 +9390,29 @@ function renderFocus() {
   document.getElementById('focusTitle').textContent = t.text;
   const descEl = document.getElementById('focusDesc');
   const hasDesc = t.description && t.description.trim().length > 0;
-  descEl.textContent = hasDesc ? t.description : 'No description — just you and the task.';
-  descEl.classList.toggle('empty', !hasDesc);
+  // When there's no description, hide the element entirely rather than showing
+  // a placeholder. Keeps the focus screen visually cleaner.
+  if (hasDesc) {
+    descEl.textContent = t.description;
+    descEl.classList.remove('empty');
+    descEl.style.display = '';
+  } else {
+    descEl.textContent = '';
+    descEl.style.display = 'none';
+  }
 
-  // Log
+  // Session notes log — check-ins only (entries that aren't comments).
+  // Comments go in their own .focus-comments section below.
   const logList = document.getElementById('focusLogList');
   const logWrap = document.getElementById('focusLog');
-  const entries = t.focusLog || [];
-  if (entries.length === 0) {
+  const allEntries = t.focusLog || [];
+  const checkinEntries = allEntries.filter(e => e.kind !== 'comment');
+  if (checkinEntries.length === 0) {
     logWrap.style.display = 'none';
   } else {
     logWrap.style.display = 'block';
     logList.innerHTML = '';
-    entries.forEach(entry => {
+    checkinEntries.forEach(entry => {
       const div = document.createElement('div');
       div.className = 'focus-log-entry';
       const ts = document.createElement('span');
@@ -8388,6 +9424,96 @@ function renderFocus() {
       logList.appendChild(div);
     });
   }
+
+  // Comments thread (rendered separately, filtered to kind:'comment' only)
+  renderFocusComments();
+}
+
+// Render the comments thread on the focus page. Reuses the same .activity-entry
+// styling used by the task detail modal so the visual language stays unified.
+function renderFocusComments() {
+  const t = state.tasks.find(x => x.id === focusTaskId);
+  if (!t) return;
+  const thread = document.getElementById('focusCommentsThread');
+  const countEl = document.getElementById('focusCommentsCount');
+  if (!thread) return;
+  const all = Array.isArray(t.focusLog) ? t.focusLog : [];
+  const comments = all
+    .filter(e => e.kind === 'comment')
+    .sort((a, b) => (b.time || 0) - (a.time || 0)); // newest first
+  thread.innerHTML = '';
+  if (countEl) {
+    countEl.textContent = comments.length > 0 ? `${comments.length}` : '';
+  }
+  if (comments.length === 0) return;
+
+  // Compute opacity fade for older comments (newest 100%, oldest ~28%)
+  const total = comments.length;
+  comments.forEach((entry, idx) => {
+    const row = document.createElement('div');
+    row.className = 'activity-entry kind-comment';
+    row.dataset.entryId = entry.id || '';
+    const opacity = total === 1 ? 1 : Math.max(0.28, 1 - (idx / total) * 0.72);
+    row.style.opacity = opacity.toFixed(2);
+
+    const dot = document.createElement('span');
+    dot.className = 'activity-entry-dot';
+    dot.title = 'Comment';
+    row.appendChild(dot);
+
+    const note = document.createElement('span');
+    note.className = 'activity-entry-note';
+    note.textContent = entry.note;
+    note.title = entry.note;
+    row.appendChild(note);
+
+    const time = document.createElement('span');
+    time.className = 'activity-entry-time';
+    time.textContent = journalTimeLabel(entry.time);
+    row.appendChild(time);
+
+    // Right-click → delete this entry (reuses the existing entry context menu)
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openActivityEntryMenu(t.id, entry.id, e.clientX, e.clientY);
+    });
+
+    thread.appendChild(row);
+  });
+}
+
+// Submit a new comment from the focus page. Same data shape as the task
+// detail modal's submitComment, scoped to focusTaskId.
+function submitFocusComment() {
+  if (!focusTaskId) return;
+  const input = document.getElementById('focusCommentInput');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  const t = state.tasks.find(x => x.id === focusTaskId);
+  if (!t) return;
+  if (!Array.isArray(t.focusLog)) t.focusLog = [];
+  t.focusLog.push({
+    id: 'e_' + uid(),
+    time: nowMs(),
+    note: text,
+    kind: 'comment',
+  });
+  input.value = '';
+  input.style.height = '';
+  updateFocusComposerSubmitState();
+  save();
+  renderFocusComments();
+  // If the journal is also open, refresh it so the new comment appears there too
+  if (currentView === 'journal') renderJournal();
+}
+
+function updateFocusComposerSubmitState() {
+  const input = document.getElementById('focusCommentInput');
+  const btn = document.getElementById('focusCommentSubmit');
+  if (!input || !btn) return;
+  btn.disabled = input.value.trim().length === 0;
 }
 
 function formatFocusTime(ms) {
@@ -8403,6 +9529,10 @@ function startFocusTimer() {
     if (!focusTaskId) return;
     const elapsed = nowMs() - focusStartTs;
     document.getElementById('focusTimerElapsed').textContent = formatFocusElapsed(elapsed);
+    // Keep the mini pill's elapsed counter in sync too — it might be visible
+    // (when minimized) or hidden, but it's cheap to update either way.
+    const miniElapsed = document.getElementById('focusMiniPillElapsed');
+    if (miniElapsed) miniElapsed.textContent = formatFocusElapsed(elapsed);
     const sinceCheckpoint = nowMs() - focusLastCheckpoint;
     const untilNext = FOCUS_CHECKPOINT_MS - sinceCheckpoint;
     const nextEl = document.getElementById('focusTimerNext');
@@ -8509,6 +9639,37 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// F — toggle focus fullscreen <-> minimized state. Only active when a focus
+// session exists (focusTaskId set). Suppressed while typing in inputs so the
+// user can write the letter 'f' in comments/descriptions.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'f' && e.key !== 'F') return;
+  if (!focusTaskId) return;
+  if (isEditableFocused()) return;
+  // Also suppress if any modifier is held (Cmd+F = find, etc.)
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  e.preventDefault();
+  const overlayShown = document.getElementById('focusOverlay').classList.contains('show');
+  if (overlayShown) {
+    minimizeFocusFullscreen();
+  } else {
+    restoreFocusFullscreen();
+  }
+});
+
+// Right-click anywhere on the focus overlay → minimize. Stops the default
+// context menu since the gesture is being repurposed as "minimize."
+document.getElementById('focusOverlay').addEventListener('contextmenu', (e) => {
+  if (!focusTaskId) return;
+  e.preventDefault();
+  minimizeFocusFullscreen();
+});
+
+// Clicking the mini pill restores the fullscreen view.
+document.getElementById('focusMiniPill').addEventListener('click', () => {
+  restoreFocusFullscreen();
+});
+
 // Mark done from focus mode
 document.getElementById('focusMarkDone').addEventListener('click', (e) => {
   const t = state.tasks.find(x => x.id === focusTaskId);
@@ -8521,6 +9682,427 @@ document.getElementById('focusMarkDone').addEventListener('click', (e) => {
   // Exit a moment later so the user sees a flash of the celebration before returning
   setTimeout(() => exitFocus(), 600);
 });
+
+// ============ QUESTS NOTEBOOK ============
+function openQuestsNotebook() {
+  if (currentView !== 'quests') previousView = currentView;
+  currentView = 'quests';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  render();
+}
+function exitQuestsNotebook() {
+  currentView = (previousView === 'backlog') ? 'backlog' : 'active';
+  render();
+}
+
+// Renders the notebook list — one row per quest-type task that has no parent.
+// Pinned quests show a colored stripe + pin glyph; unpinned ones are plain.
+function renderQuestsNotebook() {
+  const list = document.getElementById('questsNotebookList');
+  if (!list) return;
+  list.innerHTML = '';
+  // Quest-type tasks that aren't children of other quests = top-level quest ideas.
+  // Pure chronological order: oldest at top, newest at bottom. No special
+  // sorting for pinned/completed — those states show via visual treatment
+  // (color stripe, strike-through) but don't move the row.
+  const ideas = state.tasks
+    .filter(t => t.type === 'quest' && !t.questId)
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+  for (const q of ideas) {
+    const isCompleted = !!q.completedAt;
+    const row = document.createElement('div');
+    row.className = 'quest-idea'
+      + (q.pinned ? ' is-pinned' : '')
+      + (isCompleted ? ' is-completed' : '');
+    if (q.pinned) {
+      row.style.setProperty('--quest-color', questColorFor(q));
+    } else if (isCompleted && typeof q.colorIndex === 'number') {
+      // Completed but no longer pinned — still color-tint by the color it
+      // had when it was active, for visual continuity
+      row.style.setProperty('--quest-color', QUEST_COLORS[q.colorIndex] || '');
+    }
+    row.dataset.questId = q.id;
+
+    // Far-left: completion checkbox. Square with rounded edges. Filled with
+    // the quest's color when checked. Click anywhere on the checkbox toggles.
+    const check = document.createElement('button');
+    check.className = 'quest-idea-check' + (isCompleted ? ' is-checked' : '');
+    check.setAttribute('aria-label', isCompleted ? 'Mark as incomplete' : 'Mark as complete');
+    check.title = isCompleted ? 'Mark as incomplete' : 'Complete this quest';
+    check.innerHTML = isCompleted ? '✓' : '';
+    check.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleQuestIdeaCompletion(q.id, check);
+    });
+    row.appendChild(check);
+
+    // Left marker (after checkbox):
+    //   - Pinned: shows the pin index number (1-5) in the quest's color
+    //   - Unpinned: empty slot — keeps spacing consistent so titles align
+    const marker = document.createElement('span');
+    marker.className = 'quest-idea-pin';
+    if (q.pinned && typeof q.pinIndex === 'number') {
+      marker.textContent = String(q.pinIndex + 1);
+      marker.classList.add('is-number');
+      marker.title = 'Pinned to slot ' + (q.pinIndex + 1);
+    } else {
+      marker.textContent = '';
+    }
+    row.appendChild(marker);
+
+    // Editable text
+    const text = document.createElement('div');
+    text.className = 'quest-idea-text';
+    text.contentEditable = 'true';
+    text.spellcheck = false;
+    text.textContent = q.text;
+    text.addEventListener('blur', () => {
+      const newText = text.textContent.trim();
+      if (!newText) {
+        // Empty after edit — remove the quest entirely (and unpin if pinned)
+        if (q.pinned) unpinQuest(q.id);
+        state.tasks = state.tasks.filter(x => x.id !== q.id);
+        save();
+        renderQuestsNotebook();
+        renderPinnedQuestBar();
+        return;
+      }
+      if (newText !== q.text) {
+        q.text = newText;
+        save();
+        // If pinned, the tab bar needs to update too
+        if (q.pinned) renderPinnedQuestBar();
+      }
+    });
+    text.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        text.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        text.textContent = q.text;
+        text.blur();
+      }
+    });
+    row.appendChild(text);
+
+    // Right-side date stamp — when this idea was first logged.
+    // Format: "14-Sep-26" (day-month-year, short month, 2-digit year).
+    const date = document.createElement('span');
+    date.className = 'quest-idea-date';
+    date.textContent = formatQuestIdeaDate(q.createdAt);
+    row.appendChild(date);
+
+    // Right-click → context menu
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openQuestIdeaCtxMenu(q.id, e.clientX, e.clientY);
+    });
+
+    list.appendChild(row);
+  }
+}
+
+// Compact date formatter for quest ideas: "14-Sep-26".
+// Falls back to "—" when no createdAt timestamp exists (defensive — every
+// idea should have one once saved, but legacy entries from earlier versions
+// might not).
+function formatQuestIdeaDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '—';
+  const day = String(d.getDate()).padStart(2, '0');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const month = months[d.getMonth()];
+  const year = String(d.getFullYear()).slice(-2);
+  return `${day}-${month}-${year}`;
+}
+
+// Pin a quest idea to the next available slot in the tab bar
+function pinQuest(questId) {
+  const q = state.tasks.find(t => t.id === questId && t.type === 'quest');
+  if (!q) return;
+  if (q.pinned) return; // already pinned
+  const idx = nextAvailablePinIndex();
+  if (idx < 0) {
+    console.warn('[pin] All slots taken — unpin one first');
+    return;
+  }
+  q.pinned = true;
+  q.pinIndex = idx;
+  q.colorIndex = nextAvailableColorIndex();
+  save();
+  renderQuestsNotebook();
+  renderPinnedQuestBar();
+}
+
+// Unpin a quest — leaves the idea in the notebook but removes its tab
+function unpinQuest(questId) {
+  const q = state.tasks.find(t => t.id === questId && t.type === 'quest');
+  if (!q) return;
+  q.pinned = false;
+  q.pinIndex = undefined;
+  // Keep colorIndex so if they re-pin, the color is remembered
+  save();
+  renderQuestsNotebook();
+  renderPinnedQuestBar();
+}
+
+// Change the color of a pinned quest. cycleColor advances through the palette.
+function cycleQuestColor(questId) {
+  const q = state.tasks.find(t => t.id === questId);
+  if (!q) return;
+  const current = typeof q.colorIndex === 'number' ? q.colorIndex : 0;
+  q.colorIndex = (current + 1) % QUEST_COLORS.length;
+  save();
+  renderQuestsNotebook();
+  renderPinnedQuestBar();
+}
+
+// Toggle the completion state of a quest idea. When completing:
+//   - Sets completedAt timestamp
+//   - Auto-unpins from the tab bar (slot freed up for new pursuits)
+//   - BUT preserves pinIndex so uncheck can try to restore it
+//   - Triggers a celebratory reward: confetti burst + gold flash + meow sound
+// When uncompleting:
+//   - Clears completedAt
+//   - If the quest was pinned before completion AND its previous slot is
+//     still free, re-pins it to that exact slot. Otherwise stays unpinned.
+function toggleQuestIdeaCompletion(questId, checkboxEl) {
+  const q = state.tasks.find(t => t.id === questId && t.type === 'quest');
+  if (!q) return;
+  const wasCompleted = !!q.completedAt;
+
+  if (wasCompleted) {
+    // Uncomplete — quiet, no reward
+    q.completedAt = undefined;
+    // Try to restore pinned status: only if it had a pinIndex preserved AND
+    // that exact slot is currently empty.
+    if (typeof q.pinIndex === 'number') {
+      const slotOccupant = state.tasks.find(t =>
+        t.type === 'quest' && t.pinned && t.pinIndex === q.pinIndex && t.id !== q.id
+      );
+      if (!slotOccupant) {
+        // Slot is free — restore the pin
+        q.pinned = true;
+      } else {
+        // Slot taken — give up the index so future pins behave cleanly,
+        // quest reverts to an active (unpinned) idea
+        q.pinIndex = undefined;
+      }
+    }
+    save();
+    renderQuestsNotebook();
+    renderPinnedQuestBar();
+    return;
+  }
+
+  // Complete — set timestamp, auto-unpin if pinned (but preserve pinIndex
+  // so unchecking can attempt to restore it), fire reward
+  q.completedAt = nowMs();
+  const wasPinned = q.pinned;
+  if (wasPinned) {
+    q.pinned = false;
+    // pinIndex preserved intentionally (NOT cleared) so uncheck can read it back.
+    // colorIndex also stays so the completed-state border keeps the quest's identity.
+  }
+  save();
+
+  // ----- Reward animation -----
+  // 1. Confetti burst from the checkbox's position
+  if (checkboxEl) {
+    const rect = checkboxEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    burstOutcomeParticles(cx, cy);
+  }
+  // 2. Brief celebratory meow (reuses existing audio)
+  try { playMeow(); } catch (e) { /* audio not ready, no big deal */ }
+  // 3. Add a temporary glow class to the row for a soft gold flash
+  const row = checkboxEl ? checkboxEl.closest('.quest-idea') : null;
+  if (row) {
+    row.classList.add('is-just-completed');
+    setTimeout(() => row.classList.remove('is-just-completed'), 800);
+  }
+
+  // Re-render after the visual celebration has had a moment to play.
+  // 600ms gives the confetti time to bloom before the strike-through settles in.
+  setTimeout(() => {
+    renderQuestsNotebook();
+    if (wasPinned) renderPinnedQuestBar();
+  }, 600);
+}
+
+// ============ PINNED QUEST BAR ============
+function renderPinnedQuestBar() {
+  const bar = document.getElementById('pinnedQuestBar');
+  if (!bar) return;
+  const pinned = getPinnedQuests();
+  // Toggle a body-level class so layout can reserve bottom space for the
+  // floating tab bar (the pain legend / footer would otherwise sit hidden
+  // beneath it when the user scrolls to the page bottom).
+  document.body.classList.toggle('has-pinned-quests', pinned.length > 0);
+  if (pinned.length === 0) {
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  bar.innerHTML = '';
+  for (const q of pinned) {
+    const tab = document.createElement('div');
+    tab.className = 'pinned-quest-tab';
+    if (currentView === 'quest' && currentQuestId === q.id) {
+      tab.classList.add('is-active');
+    }
+    tab.style.setProperty('--quest-color', questColorFor(q));
+    tab.dataset.questId = q.id;
+    tab.title = q.text + ' — click to open · right-click for options';
+
+    // Index badge — half-on, half-off the left edge of the tab. Acts as an
+    // "ID chip" so the user can map keyboard shortcuts (1-5) to tabs at a glance.
+    const idxBadge = document.createElement('span');
+    idxBadge.className = 'pinned-quest-tab-index';
+    idxBadge.textContent = String((q.pinIndex || 0) + 1);
+    tab.appendChild(idxBadge);
+
+    // Quest name
+    const name = document.createElement('div');
+    name.className = 'pinned-quest-tab-name';
+    name.textContent = q.text;
+    tab.appendChild(name);
+
+    // Meta row: just the linked task count now (index moved to its own badge)
+    const meta = document.createElement('div');
+    meta.className = 'pinned-quest-tab-meta';
+    const linkedCount = state.tasks.filter(t => t.questId === q.id && t.col !== 'done').length;
+    const countLabel = document.createElement('span');
+    countLabel.className = 'pinned-quest-tab-count';
+    countLabel.textContent = linkedCount > 0 ? `${linkedCount} active` : 'empty';
+    meta.appendChild(countLabel);
+    tab.appendChild(meta);
+
+    // Click → open this Quest's detail page, OR if this tab is already the
+    // active one (we're already inside this Quest), toggle off and return
+    // to the main active board.
+    tab.addEventListener('click', () => {
+      if (currentView === 'quest' && currentQuestId === q.id) {
+        exitQuest();
+      } else {
+        openQuest(q.id);
+      }
+    });
+    // Right-click → context menu (unpin, change color)
+    tab.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openPinnedTabCtxMenu(q.id, e.clientX, e.clientY);
+    });
+
+    bar.appendChild(tab);
+  }
+}
+
+// ---- Context menus for quest ideas + pinned tabs ----
+// Reuses the same context-menu styling/markup as the main task menu.
+function openQuestIdeaCtxMenu(questId, x, y) {
+  closeAllCtxMenus();
+  const q = state.tasks.find(t => t.id === questId);
+  if (!q) return;
+  const menu = document.createElement('div');
+  menu.className = 'task-ctx-menu';
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+
+  const slotsLeft = MAX_PINNED_QUESTS - getPinnedQuests().length;
+
+  if (!q.pinned && slotsLeft > 0) {
+    const pin = document.createElement('button');
+    pin.className = 'task-ctx-item';
+    pin.textContent = 'Pin to bar';
+    pin.addEventListener('click', () => { pinQuest(questId); closeAllCtxMenus(); });
+    menu.appendChild(pin);
+  } else if (!q.pinned && slotsLeft === 0) {
+    const note = document.createElement('div');
+    note.className = 'task-ctx-item is-disabled';
+    note.textContent = 'All 5 slots taken';
+    menu.appendChild(note);
+  }
+  if (q.pinned) {
+    const unpin = document.createElement('button');
+    unpin.className = 'task-ctx-item';
+    unpin.textContent = 'Unpin from bar';
+    unpin.addEventListener('click', () => { unpinQuest(questId); closeAllCtxMenus(); });
+    menu.appendChild(unpin);
+
+    const color = document.createElement('button');
+    color.className = 'task-ctx-item';
+    color.textContent = 'Change color';
+    color.addEventListener('click', () => { cycleQuestColor(questId); closeAllCtxMenus(); });
+    menu.appendChild(color);
+  }
+
+  const del = document.createElement('button');
+  del.className = 'task-ctx-item is-danger';
+  del.textContent = 'Delete idea';
+  del.addEventListener('click', () => {
+    if (q.pinned) unpinQuest(questId);
+    // Also unlink any tasks linked to this quest
+    state.tasks.forEach(t => { if (t.questId === questId) t.questId = undefined; });
+    state.tasks = state.tasks.filter(t => t.id !== questId);
+    save();
+    renderQuestsNotebook();
+    renderPinnedQuestBar();
+    closeAllCtxMenus();
+  });
+  menu.appendChild(del);
+
+  document.body.appendChild(menu);
+  positionCtxMenu(menu, x, y);
+}
+
+function openPinnedTabCtxMenu(questId, x, y) {
+  closeAllCtxMenus();
+  const q = state.tasks.find(t => t.id === questId);
+  if (!q) return;
+  const menu = document.createElement('div');
+  menu.className = 'task-ctx-menu';
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+
+  const open = document.createElement('button');
+  open.className = 'task-ctx-item';
+  open.textContent = 'Open detail';
+  open.addEventListener('click', () => { openQuest(questId); closeAllCtxMenus(); });
+  menu.appendChild(open);
+
+  const color = document.createElement('button');
+  color.className = 'task-ctx-item';
+  color.textContent = 'Change color';
+  color.addEventListener('click', () => { cycleQuestColor(questId); closeAllCtxMenus(); });
+  menu.appendChild(color);
+
+  const unpin = document.createElement('button');
+  unpin.className = 'task-ctx-item is-danger';
+  unpin.textContent = 'Unpin from bar';
+  unpin.addEventListener('click', () => { unpinQuest(questId); closeAllCtxMenus(); });
+  menu.appendChild(unpin);
+
+  document.body.appendChild(menu);
+  positionCtxMenu(menu, x, y);
+}
+
+// Adjust menu position so it stays in viewport
+function positionCtxMenu(menu, x, y) {
+  const rect = menu.getBoundingClientRect();
+  if (rect.right > window.innerWidth) menu.style.left = (window.innerWidth - rect.width - 8) + 'px';
+  if (rect.bottom > window.innerHeight) menu.style.top = (window.innerHeight - rect.height - 8) + 'px';
+}
+
+function closeAllCtxMenus() {
+  document.querySelectorAll('.task-ctx-menu').forEach(m => m.remove());
+}
 
 // ============ JOURNAL ============
 function openJournal() {
@@ -8990,9 +10572,23 @@ document.addEventListener('keydown', (e) => {
   if (focusTaskId) return; // in focus mode, hands off
   if (e.metaKey || e.ctrlKey || e.altKey) return;
 
+  // 1-5 — toggle task assignment to the quest pinned at that slot.
+  // - Hover a task, press 1-5: link to that quest (or reassign if linked elsewhere)
+  // - Press the same number again on the same task: unlink (toggle off)
+  // Silent no-op if no task is hovered, no quest is pinned at that slot, or
+  // the hovered "task" is itself a quest.
+  if (e.key >= '1' && e.key <= '5') {
+    if (hoveredTaskId) {
+      e.preventDefault();
+      const idx = parseInt(e.key, 10) - 1;
+      toggleHoveredTaskQuestLink(idx);
+      return;
+    }
+  }
+
   if (e.key === 'Tab') {
-    // Only toggle on the main app views; skip if inside a Quest, Journal, or Stats
-    if (currentView === 'quest' || currentView === 'journal' || currentView === 'stats') return;
+    // Only toggle between Active/Backlog. Skip on Quest/Journal/Stats/Quests views.
+    if (currentView === 'quest' || currentView === 'journal' || currentView === 'stats' || currentView === 'quests') return;
     e.preventDefault();
     currentView = (currentView === 'active') ? 'backlog' : 'active';
     render();
@@ -9003,6 +10599,30 @@ document.addEventListener('keydown', (e) => {
       void btn.offsetWidth;
       btn.classList.add('flash');
       setTimeout(() => btn.classList.remove('flash'), 600);
+    }
+    return;
+  }
+
+  // A — return to the main Board (Active view) from anywhere. One-way:
+  // doesn't toggle. If already on the board, no-op.
+  if (e.key === 'a' || e.key === 'A') {
+    e.preventDefault();
+    if (currentView !== 'active') {
+      currentView = 'active';
+      currentQuestId = null;
+      render();
+    }
+    return;
+  }
+
+  // E — toggle Quests notebook. Mnemonic: the E in qu*E*sts.
+  // Same context-aware toggle pattern as R and S.
+  if (e.key === 'e' || e.key === 'E') {
+    e.preventDefault();
+    if (currentView === 'quests') {
+      exitQuestsNotebook();
+    } else {
+      openQuestsNotebook();
     }
     return;
   }
@@ -9030,21 +10650,9 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // T — new task
-  if (e.key === 't' || e.key === 'T') {
-    if (currentView === 'journal' || currentView === 'stats') return; // can't add from these
-    e.preventDefault();
-    focusAddInput('task');
-    return;
-  }
-
-  // Q — new quest (blocked in Quest view since no nested Quests)
-  if (e.key === 'q' || e.key === 'Q') {
-    if (currentView === 'quest' || currentView === 'journal' || currentView === 'stats') return;
-    e.preventDefault();
-    focusAddInput('quest');
-    return;
-  }
+  // v119: T and Q hotkeys removed. Tasks are created via clicking the add
+  // input or via N. Quest ideas are added via the Quest Ideas notebook input.
+  // These keys are reserved for future use.
 });
 
 // ============ RIGHT-CLICK BACK NAVIGATION ============
@@ -9727,14 +11335,65 @@ document.addEventListener('mousedown', (e) => {
 document.querySelectorAll('.view-nav-item').forEach(el => {
   el.addEventListener('click', () => {
     const target = el.dataset.viewNav;
-    if (target === 'stats') {
+    if (target === 'board') {
+      // Board is a one-way "go home" action — always lands on the active
+      // board. If user is already on active, briefly flash the item as feedback.
+      if (currentView === 'active') return;
+      currentView = 'active';
+      currentQuestId = null;
+      render();
+    } else if (target === 'stats') {
       if (currentView === 'stats') exitStats();
       else openStats();
     } else if (target === 'journal') {
       if (currentView === 'journal') exitJournal();
       else openJournal();
+    } else if (target === 'quests') {
+      if (currentView === 'quests') exitQuestsNotebook();
+      else openQuestsNotebook();
     }
   });
+});
+
+// Quests notebook back button
+const questsBackBtn = document.getElementById('questsBack');
+if (questsBackBtn) {
+  questsBackBtn.addEventListener('click', exitQuestsNotebook);
+}
+
+// Quests notebook — add new idea via the input at the bottom
+const questsAddInput = document.getElementById('questsNotebookInput');
+if (questsAddInput) {
+  questsAddInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const text = questsAddInput.value.trim();
+      if (!text) return;
+      // Create a new quest-type task with no parent. Default col='todo' for
+      // consistency with the existing quest model; if pinned later, the
+      // detail page surface uses col semantics anyway.
+      const newQuest = {
+        id: 't_' + uid(),
+        text,
+        type: 'quest',
+        col: 'todo',
+        pain: 3,
+        createdAt: nowMs(),
+        pinned: false,
+      };
+      state.tasks.push(newQuest);
+      questsAddInput.value = '';
+      save();
+      renderQuestsNotebook();
+    }
+  });
+}
+
+// Dismiss context menus on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.task-ctx-menu')) {
+    closeAllCtxMenus();
+  }
 });
 
 // ============ BOOT ============
