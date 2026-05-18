@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v170</title>
+<title>Kanban Quest — v179</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -821,6 +821,21 @@
     30%  { box-shadow: 0 0 0 6px rgba(212, 255, 58, 0.15); }
     100% { box-shadow: 0 0 0 0 transparent; }
   }
+  /* v176: Card "knocked out" of Doing into Blocked when the Doing slot is
+     reassigned. A quick shake + amber pulse signals the displacement, then
+     the card settles in its new column. ~700ms total. */
+  .task.knocked-out {
+    animation: task-knocked-out 0.7s ease-out;
+  }
+  @keyframes task-knocked-out {
+    0%   { transform: translateX(0)    rotate(0);    box-shadow: 0 0 0 0 transparent; }
+    10%  { transform: translateX(-8px) rotate(-2deg); box-shadow: 0 0 0 3px rgba(255, 179, 71, 0.25); }
+    25%  { transform: translateX(10px) rotate(2deg);  box-shadow: 0 0 0 6px rgba(255, 179, 71, 0.2); }
+    40%  { transform: translateX(-6px) rotate(-1deg); box-shadow: 0 0 0 4px rgba(255, 179, 71, 0.15); }
+    55%  { transform: translateX(4px)  rotate(1deg);  box-shadow: 0 0 0 2px rgba(255, 179, 71, 0.08); }
+    75%  { transform: translateX(0)    rotate(0);    box-shadow: 0 0 0 0 transparent; }
+    100% { transform: translateX(0)    rotate(0);    box-shadow: 0 0 0 0 transparent; }
+  }
 
   /* Companion pulse on the pinned tab that received the assignment. */
   .pinned-quest-tab.just-received {
@@ -922,9 +937,20 @@
     overflow-wrap: break-word;
   }
   .task.done .task-text {
-    color: var(--ink-faint);
+    /* v174: Was --ink-faint (#55555a — almost invisible). Bumped to --ink-dim
+       so the title stays muted but actually readable. The line-through itself
+       carries enough of the "done" signal; we don't need to also bury the
+       color. Slightly looser line-height so wrapped lines don't crowd. */
+    color: var(--ink-dim);
+    line-height: 1.5;
     text-decoration: line-through;
     text-decoration-color: var(--ink-faint);
+  }
+  /* v174: Slightly more vertical padding on done cards so the title (now
+     line-through, slightly looser) doesn't feel cramped against the card edges. */
+  .task.done {
+    padding-top: 16px;
+    padding-bottom: 14px;
   }
 
   /* Link task — task created from pasting a URL. Distinguishable by the open-link icon. */
@@ -1028,8 +1054,10 @@
     color: var(--ink);
   }
   .task.done .task-desc-render {
-    color: var(--ink-faint);
-    opacity: 0.7;
+    /* v174: Was --ink-faint AND opacity:0.7 — double-dimmed to the point of
+       illegibility. The dimmer color alone is enough; dropping the opacity
+       stack restores readability. */
+    color: var(--ink-dim);
   }
   /* Quests get slightly larger description text */
   .task.is-quest .task-desc-render {
@@ -1281,6 +1309,74 @@
     opacity: 0;
     transform: translateY(4px);
     transition: opacity 0.3s, transform 0.3s, color 0.4s;
+  }
+  /* v176: Cat speech bubble — surfaces context-aware messages (e.g. when the
+     user moves a second card into Doing, the cat narrates the swap). Sits
+     above the cat in the same right-aligned column, with a small tail pointing
+     down toward the cat. Hidden by default; .show fades it in for a few seconds.
+     v177: Widened to fit longer epic phrases without making them feel cramped. */
+  .cat-speech-bubble {
+    pointer-events: none;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 14px;
+    max-width: 280px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+    transition: opacity 0.4s ease-out, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* Sit naturally above the cat in the flex column. align-self centers it
+       over the cat frame's visual center (matching the focus mini-pill pattern). */
+    align-self: center;
+    /* Nudge right ~12px to align with cat's perceived center (tail extends
+       rightward), same offset we use on the focus-mini-pill. */
+    margin-right: -12px;
+    /* Pull it closer to the cat's head — the cat-companion has 8px gap baked in. */
+    margin-bottom: -8px;
+    position: relative;
+  }
+  /* Bubble tail — small triangle pointing down toward the cat */
+  .cat-speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 7px solid var(--bg-card);
+  }
+  .cat-speech-bubble::before {
+    /* Border-matching layer behind the tail */
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid var(--line);
+  }
+  .cat-speech-bubble.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  .cat-speech-text {
+    font-family: var(--serif);
+    font-style: italic;
+    /* v177: Trimmed from 13px → 11px so longer epic phrases breathe without
+       turning the bubble into a wall of text. Italic serif still carries the
+       wisdom/literary feel; the smaller size keeps it as a quiet aside rather
+       than a shout. */
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--ink);
+    letter-spacing: 0.01em;
   }
   .cat-companion:hover .cat-mood-tag,
   .cat-companion.show-tag .cat-mood-tag {
@@ -4340,6 +4436,19 @@
     overflow-y: auto;
   }
   .focus-overlay.show { display: flex; }
+  /* v179: Minimize animation — the overlay shrinks toward the bottom-right
+     corner (where the cat + mini pill live) and fades out. Quick + snappy
+     (~280ms). After the animation completes, JS removes the .show class so
+     the overlay actually goes display:none. */
+  .focus-overlay.minimizing {
+    transform-origin: 100% 100%;
+    animation: focus-overlay-minimize 0.28s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+    pointer-events: none;
+  }
+  @keyframes focus-overlay-minimize {
+    0%   { transform: scale(1) translate(0, 0);        opacity: 1; }
+    100% { transform: scale(0.04) translate(60px, 60px); opacity: 0; }
+  }
   .focus-overlay::before {
     content: '';
     position: absolute;
@@ -4558,6 +4667,57 @@
     /* Reset any inherited margin so the thread sits flush below the composer */
     margin-top: 0;
   }
+  /* v172: Notebook-style single-line input (mirrors .quests-notebook-add).
+     Transparent, borderless, italic serif — feels like writing in a margin
+     rather than a bulky chat composer.
+     v173: Becomes a flex row to hold a small Post button on the right. */
+  .focus-comments-add {
+    padding-top: 8px;
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .focus-comments-add input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 10px 12px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--ink);
+    caret-color: var(--accent);
+  }
+  .focus-comments-add input::placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+  /* Small Post affordance — only visually prominent when there's text to post.
+     Disabled state fades; enabled state picks up the chartreuse accent. */
+  .focus-comments-post {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color 0.15s, border-color 0.15s, opacity 0.15s;
+  }
+  .focus-comments-post:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .focus-comments-post:not(:disabled):hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
   /* When the focus mode is on a dark backdrop, the composer textarea's
      --bg-soft background sits well already. No override needed. */
 
@@ -4642,6 +4802,17 @@
     /* Defeats the default <button> styling reset */
     font: inherit;
     color: inherit;
+  }
+  /* v179: Pop-in for the pill, played right after the overlay finishes
+     shrinking. Small spring scale so the pill feels like it "lands" from
+     the shrinking overlay. */
+  .focus-mini-pill.popping-in {
+    animation: focus-mini-pill-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes focus-mini-pill-pop {
+    0%   { transform: scale(0.4); opacity: 0; }
+    60%  { transform: scale(1.06); opacity: 1; }
+    100% { transform: scale(1);    opacity: 1; }
   }
   .focus-mini-pill:hover {
     border-color: var(--accent);
@@ -4729,18 +4900,30 @@
   .focus-cat-frame.pat-ready .focus-cat-eye-looking { opacity: 1; }
 
   .focus-cat-pat-indicator {
+    /* v178: Now absolutely positioned INSIDE .focus-cat-frame, sitting
+       directly over the cat's chest/upper-belly area — just above the book
+       the cat is scribbling in (book top edge at SVG y=118 in a 160-unit
+       viewBox). The label sits ~y=98 to land on the chest area without
+       covering the paws (which are at y=120+).
+       align: centered horizontally over the cat's body (which is centered
+       around cx=76-78 in the SVG, slightly left of frame center). */
+    position: absolute;
+    top: 88px;
+    left: 50%;
+    transform: translateX(calc(-50% - 4px));
+    z-index: 2;
     font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.2em;
+    /* Smaller — fits cleanly on the cat's chest without overpowering the figure */
+    font-size: 8px;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--accent);
-    background: var(--bg-card);
+    background: rgba(20, 20, 22, 0.92);
     border: 1px solid var(--accent);
-    padding: 5px 11px;
+    padding: 3px 8px;
     border-radius: 2px;
     box-shadow: 0 0 16px rgba(212, 255, 58, 0.3);
     opacity: 0;
-    transform: translateY(4px);
     transition: opacity 0.3s, transform 0.3s;
     pointer-events: none;
     white-space: nowrap;
@@ -4748,7 +4931,7 @@
   }
   .focus-cat.pat-ready .focus-cat-pat-indicator {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(calc(-50% - 4px));
   }
   @keyframes focus-cat-pulse {
     0%, 100% { box-shadow: 0 0 16px rgba(212, 255, 58, 0.3); }
@@ -5017,7 +5200,7 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v170</span>
+      <span class="eyebrow">— Kanban / v179</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <!-- Right-side cluster: level + sync indicator. User menu has moved
@@ -5326,7 +5509,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v170</span>
+      <span class="footer-version">v179</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
@@ -5339,6 +5522,11 @@
 </div>
 
 <div class="cat-companion" id="catCompanion">
+  <!-- v176: Speech bubble for cat reactions (e.g. when the global Doing slot
+       is reassigned). Hidden by default; .show class fades it in. -->
+  <div class="cat-speech-bubble" id="catSpeechBubble">
+    <span class="cat-speech-text" id="catSpeechText"></span>
+  </div>
   <div class="cat-mood-tag content" id="catMoodTag">content</div>
   <div class="cat-frame mood-content" id="catFrame">
     <svg viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
@@ -5654,16 +5842,20 @@
          show here — focus check-ins live separately in .focus-log below. -->
     <div class="focus-comments" id="focusComments">
       <div class="focus-comments-header">
-        <span class="focus-comments-label">Comments</span>
+        <span class="focus-comments-label">Activity</span>
         <span class="focus-comments-count" id="focusCommentsCount"></span>
       </div>
-      <div class="activity-composer focus-activity-composer">
-        <textarea
-          class="activity-composer-input"
+      <!-- v172: Notebook-style single-line input, mirrors the Quest Ideas
+           add-input visual language. Transparent background, no border, italic
+           serif. Enter to submit.
+           v173: Adds a small Post affordance on the right so the action is
+           discoverable for users who don't reach for Enter first. -->
+      <div class="focus-comments-add">
+        <input
+          type="text"
           id="focusCommentInput"
-          placeholder="The chronicle is empty. Strike the first mark.."
-          rows="1"></textarea>
-        <button class="activity-composer-submit" id="focusCommentSubmit" disabled>Post</button>
+          placeholder="The chronicle is empty. Strike the first mark..">
+        <button type="button" id="focusCommentSubmit" class="focus-comments-post" disabled>Post</button>
       </div>
       <div class="activity-thread focus-comments-thread" id="focusCommentsThread">
         <!-- Comment entries rendered here, newest-first -->
@@ -5679,6 +5871,12 @@
 
 <!-- Working cat companion (only shows in focus mode) -->
 <div class="focus-cat" id="focusCat" style="display:none">
+  <!-- v176: Mirror speech bubble for when the cat reacts while focus mode is
+       running. Uses the same .cat-speech-bubble styling. showCatSpeech() updates
+       both this one AND the one in #catCompanion so whichever is visible shows. -->
+  <div class="cat-speech-bubble" id="focusCatSpeechBubble">
+    <span class="cat-speech-text" id="focusCatSpeechText"></span>
+  </div>
   <!-- Minimized timer pill: shown only when focus mode is minimized (overlay
        hidden, timer still running). Click to re-enter fullscreen. The big
        elapsed counter is the primary visual; the task title sits below as
@@ -5687,8 +5885,11 @@
     <span class="focus-mini-pill-elapsed" id="focusMiniPillElapsed">0:00</span>
     <span class="focus-mini-pill-task" id="focusMiniPillTask"></span>
   </button>
-  <span class="focus-cat-pat-indicator">pat me — 15min check-in</span>
   <div class="focus-cat-frame" id="focusCatFrame">
+    <!-- v178: Pat-me indicator moved INSIDE the frame so it can overlay the
+         cat's chest/upper-belly area directly above the notebook the cat is
+         scribbling in. Positioned absolutely via CSS. -->
+    <span class="focus-cat-pat-indicator">pat me — 15min check-in</span>
     <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <g class="focus-cat-body">
         <!-- Tail curled around behind -->
@@ -6041,7 +6242,7 @@ let state = {
   weeklyVision: null,   // { weekKey, outcomes: [{id, text, createdAt, achievedAt}] }
   visionHistory: [],    // [{ weekKey, outcomes: [...] }, ...] — past weeks for the Journal
 };
-let pendingPain = { todo: 3, backlog: 3, 'quest-todo': 3, 'quest-backlog': 3 };
+let pendingPain = { todo: 1, backlog: 1, 'quest-todo': 1, 'quest-backlog': 1 };
 let pendingType = { todo: 'task', backlog: 'task' };
 
 // ============ PINNED QUESTS ============
@@ -6126,6 +6327,101 @@ function isOrphanedByCompletedQuest(t) {
   if (!t.questId) return false;
   const parent = state.tasks.find(p => p.id === t.questId && p.type === 'quest');
   return !!(parent && parent.completedAt);
+}
+
+// v176: Global "Doing" cap — at most ONE non-Quest task should be in the
+// 'doing' column across the entire app at any time. When a new card enters
+// Doing, any other task currently in Doing is bumped to Blocked and gets an
+// automatic comment recording the context switch.
+function findGlobalDoingTask(excludeTaskId) {
+  return state.tasks.find(t =>
+    t.col === 'doing' &&
+    t.type !== 'quest' &&         // Quest cards themselves never "in progress"
+    t.id !== excludeTaskId
+  );
+}
+
+// Cat speech bubble — temporarily shows a message above the main cat companion.
+// `text` is the message; `durationMs` is how long it stays visible (default 3s).
+// Phrase pool used when the global Doing slot is reassigned (v177). Also
+// available for future ambient/empty-state moments via showCatSpeech() directly.
+const CAT_SWAP_PHRASES = [
+  "Remember: the focused mind is the sharpest blade you own.",
+  "Do not scatter your strength. The focused warrior fells giants.",
+  "The mind that wanders strikes nothing. Hold the gaze.",
+  "Many quests will call your name. Answer only one.",
+  "A hundred half-struck blows fell no foe. One true strike fells the giant.",
+  "Focus is the oldest magic. The world has merely forgotten.",
+  "The board is many. The mind must be one.",
+  "Beware the wandering mind — it is the slow death of all heroes.",
+  "The noise of many quests will drown the worthy one. Hold steady.",
+  "Distraction is the quiet killer of legends.",
+  "Many have fallen not to blades, but to scattered thought.",
+  "Strike one blow. Then another. This is how mountains fall.",
+];
+let __catSpeechTimer = null;
+function showCatSpeech(text, durationMs = 3000) {
+  // Update BOTH speech bubbles so whichever cat is currently visible (main cat
+  // when not in focus mode, focus-cat when in focus mode) shows the message.
+  const bubbles = [
+    { bubble: document.getElementById('catSpeechBubble'), text: document.getElementById('catSpeechText') },
+    { bubble: document.getElementById('focusCatSpeechBubble'), text: document.getElementById('focusCatSpeechText') },
+  ];
+  bubbles.forEach(({ bubble, text: textEl }) => {
+    if (!bubble || !textEl) return;
+    textEl.textContent = text;
+    bubble.classList.add('show');
+  });
+  // If a previous bubble is still showing, cancel its hide timer
+  if (__catSpeechTimer) {
+    clearTimeout(__catSpeechTimer);
+    __catSpeechTimer = null;
+  }
+  __catSpeechTimer = setTimeout(() => {
+    bubbles.forEach(({ bubble }) => {
+      if (bubble) bubble.classList.remove('show');
+    });
+    __catSpeechTimer = null;
+  }, durationMs);
+}
+
+// Bump the currently-Doing task (if any, and not equal to the incoming task)
+// to Blocked, log a context-switch comment on it, and play the knock-out
+// animation. Returns true if a swap happened.
+function bumpExistingDoingTask(incomingTaskId) {
+  const existing = findGlobalDoingTask(incomingTaskId);
+  if (!existing) return false;
+  const incoming = state.tasks.find(x => x.id === incomingTaskId);
+  if (!incoming) return false;
+
+  // Move to Blocked
+  existing.col = 'blocked';
+
+  // Log a comment on the bumped task so the user can see the context switch
+  if (!Array.isArray(existing.focusLog)) existing.focusLog = [];
+  existing.focusLog.push({
+    id: 'e_' + uid(),
+    time: nowMs(),
+    note: `Switched to task: ${incoming.text}`,
+    kind: 'comment',
+  });
+
+  // Trigger the knock-out animation. Render() happens via the caller; we add
+  // the class via a microtask so the new DOM element exists before we animate.
+  queueMicrotask(() => {
+    const el = document.querySelector(`.task[data-id="${existing.id}"]`);
+    if (el) {
+      el.classList.add('knocked-out');
+      setTimeout(() => el.classList.remove('knocked-out'), 750);
+    }
+  });
+
+  // Speech bubble — pick a random phrase from the pool. Hold time bumped to
+  // 4.5s in v177 since the new phrases are longer and need reading time.
+  const phrase = CAT_SWAP_PHRASES[Math.floor(Math.random() * CAT_SWAP_PHRASES.length)];
+  showCatSpeech(phrase, 4500);
+
+  return true;
 }
 
 // Track which task card the mouse is currently over. Used by the keyboard
@@ -7213,6 +7509,11 @@ function render() {
   ['todo','doing','blocked','done'].forEach(col => {
     const body = document.querySelector(`[data-body="${col}"]`);
     const list = state.tasks.filter(t => t.col === col && !t.backlog && t.type !== 'quest' && !isOrphanedByCompletedQuest(t) && passesPainFilter(t));
+    // v175: Done column always sorted newest-first by completedAt. Missing
+    // timestamps sink to the bottom (treated as 0).
+    if (col === 'done') {
+      list.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
+    }
     document.querySelector(`[data-count="${col}"]`).textContent = list.length;
     body.innerHTML = '';
     if (list.length === 0 && col === 'done') {
@@ -7728,7 +8029,7 @@ document.querySelectorAll('.add-input').forEach(input => {
       // v119: Main board / backlog / quest views only create tasks. Quest-type
       // entries are created exclusively via the Quest Ideas notebook now.
       type: 'task',
-      pain: pendingPain[source] || 3,
+      pain: pendingPain[source] || 1,
       createdAt: nowMs(),
     };
     if (isUrl(text)) {
@@ -7825,6 +8126,14 @@ document.querySelectorAll('.column').forEach(col => {
     const wasDoing = task.col === 'doing';
     const becomingDone = newCol === 'done' && !wasDone;
     const becomingDoing = newCol === 'doing' && !wasDoing;
+
+    // v176: Global Doing cap. If this task is entering Doing and another task
+    // is already there (anywhere — main board OR a Quest sub-board), bump the
+    // existing one to Blocked + log the context-switch comment + cat speech.
+    if (becomingDoing && task.type !== 'quest') {
+      bumpExistingDoingTask(task.id);
+    }
+
     task.col = newCol;
 
     if (becomingDone) {
@@ -8194,6 +8503,10 @@ function renderQuestView() {
     ['todo','doing','blocked','done'].forEach(col => {
       const body = document.querySelector(`[data-quest-body="${col}"]`);
       const list = activeChildren.filter(t => t.col === col && passesPainFilter(t));
+      // v175: Done column sorted newest-first by completedAt (mirrors main board)
+      if (col === 'done') {
+        list.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
+      }
       document.querySelector(`[data-quest-count="${col}"]`).textContent = list.length;
       body.innerHTML = '';
       if (list.length === 0 && col === 'done') {
@@ -8314,6 +8627,14 @@ function bindQuestBoardDnD() {
       const wasDoing = task.col === 'doing';
       const becomingDone = newCol === 'done' && !wasDone;
       const becomingDoing = newCol === 'doing' && !wasDoing;
+
+      // v176: Global Doing cap — bump any existing Doing task to Blocked
+      // BEFORE setting this task's column. The bump function logs a comment
+      // on the displaced task and plays the cat speech bubble.
+      if (becomingDoing && task.type !== 'quest') {
+        bumpExistingDoingTask(task.id);
+      }
+
       task.col = newCol;
       if (becomingDone) {
         task.completedAt = nowMs();
@@ -9020,22 +9341,25 @@ document.getElementById('taskDetailCommentInput').addEventListener('keydown', (e
 });
 document.getElementById('taskDetailCommentSubmit').addEventListener('click', submitComment);
 
-// Focus mode comment composer — mirrors the detail composer's wiring
+// Focus mode comment composer (v172: simplified to a notebook-style single-line
+// input — no auto-grow. Enter submits.
+// v173: Small Post button added; enabled only when there's text.)
 const focusCommentInputEl = document.getElementById('focusCommentInput');
 const focusCommentSubmitEl = document.getElementById('focusCommentSubmit');
-if (focusCommentInputEl && focusCommentSubmitEl) {
-  focusCommentInputEl.addEventListener('input', () => {
-    updateFocusComposerSubmitState();
-    // Auto-grow the textarea up to its CSS max-height
-    focusCommentInputEl.style.height = 'auto';
-    focusCommentInputEl.style.height = Math.min(focusCommentInputEl.scrollHeight, 200) + 'px';
-  });
+function updateFocusCommentSubmitState() {
+  if (!focusCommentInputEl || !focusCommentSubmitEl) return;
+  focusCommentSubmitEl.disabled = focusCommentInputEl.value.trim().length === 0;
+}
+if (focusCommentInputEl) {
+  focusCommentInputEl.addEventListener('input', updateFocusCommentSubmitState);
   focusCommentInputEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter') {
       e.preventDefault();
       submitFocusComment();
     }
   });
+}
+if (focusCommentSubmitEl) {
   focusCommentSubmitEl.addEventListener('click', submitFocusComment);
 }
 
@@ -9285,9 +9609,8 @@ function enterFocus(taskId) {
   const focusCommentInput = document.getElementById('focusCommentInput');
   if (focusCommentInput) {
     focusCommentInput.value = '';
-    focusCommentInput.style.height = '';
   }
-  updateFocusComposerSubmitState();
+  if (typeof updateFocusCommentSubmitState === 'function') updateFocusCommentSubmitState();
   renderFocus();
   overlay.classList.add('show');
   catWrap.style.display = 'flex';
@@ -9319,17 +9642,45 @@ function minimizeFocusFullscreen() {
   if (!focusTaskId) return;
   const overlay = document.getElementById('focusOverlay');
   if (!overlay) return;
-  overlay.classList.remove('show');
   document.getElementById('focusSnippet').classList.remove('show');
-  // Unlock body scroll so user can interact with the main board
-  document.body.style.overflow = '';
-  document.body.classList.remove('focus-active');
-  // Show the mini pill and prime its values
+
+  // v179: Quick minimize animation — the overlay shrinks toward the bottom-
+  // right corner (where the cat lives), then the mini pill pops in. ~280ms
+  // overlay scale-down + ~320ms pill pop. The whole transition feels snappy.
   const pill = document.getElementById('focusMiniPill');
-  if (pill) pill.style.display = 'flex';
-  updateFocusMiniPill();
-  // Re-render the main board so it's interactive again
-  render();
+  // If something interrupted a previous minimize, clear stale classes first
+  overlay.classList.remove('minimizing');
+  if (pill) pill.classList.remove('popping-in');
+  // Force a reflow so the animation restart actually fires
+  void overlay.offsetWidth;
+  overlay.classList.add('minimizing');
+
+  // After the shrink animation finishes, hide the overlay properly, show the
+  // pill, and play its pop-in. Slight buffer (~20ms) so the keyframe is fully
+  // settled before we swap DOM visibility.
+  const ANIM_MS = 280;
+  setTimeout(() => {
+    overlay.classList.remove('show');
+    overlay.classList.remove('minimizing');
+    // Unlock body scroll so user can interact with the main board
+    document.body.style.overflow = '';
+    document.body.classList.remove('focus-active');
+    // Show + prime the mini pill, then play the pop-in
+    if (pill) {
+      pill.style.display = 'flex';
+      updateFocusMiniPill();
+      // Restart the pop animation by removing/re-adding the class
+      pill.classList.remove('popping-in');
+      void pill.offsetWidth;
+      pill.classList.add('popping-in');
+      // Strip the class after the animation so the pill returns to its
+      // resting transform (the keyframe ends at scale(1) but explicit cleanup
+      // is safer in case it gets interrupted)
+      setTimeout(() => pill.classList.remove('popping-in'), 360);
+    }
+    // Re-render the main board so it's interactive again
+    render();
+  }, ANIM_MS);
 }
 
 function restoreFocusFullscreen() {
@@ -9503,19 +9854,11 @@ function submitFocusComment() {
     kind: 'comment',
   });
   input.value = '';
-  input.style.height = '';
-  updateFocusComposerSubmitState();
+  updateFocusCommentSubmitState();
   save();
   renderFocusComments();
   // If the journal is also open, refresh it so the new comment appears there too
   if (currentView === 'journal') renderJournal();
-}
-
-function updateFocusComposerSubmitState() {
-  const input = document.getElementById('focusCommentInput');
-  const btn = document.getElementById('focusCommentSubmit');
-  if (!input || !btn) return;
-  btn.disabled = input.value.trim().length === 0;
 }
 
 function formatFocusTime(ms) {
