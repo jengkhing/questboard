@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v168</title>
+<title>Kanban Quest — v170</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -5017,7 +5017,7 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v168</span>
+      <span class="eyebrow">— Kanban / v170</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <!-- Right-side cluster: level + sync indicator. User menu has moved
@@ -5326,7 +5326,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v168</span>
+      <span class="footer-version">v170</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
@@ -7492,15 +7492,12 @@ function renderTask(t) {
     // Show the full label on hover since the visible text is single-line clipped
     text.title = t.text;
   }
-  // Suppress any text selection that would otherwise begin on mousedown — the
-  // card should feel like a single tappable object, not a text field.
-  text.addEventListener('mousedown', (e) => {
-    // Allow normal interactions if the user is clicking the link icon or another
-    // explicit interactive child; just prevent the default text-selection.
-    if (!e.target.closest('a, button')) {
-      e.preventDefault();
-    }
-  });
+  // v169: Removed mousedown preventDefault on .task-text. In WebKit/Chrome,
+  // calling preventDefault() on mousedown of a draggable element cancels the
+  // subsequent dragstart event — meaning users couldn't drag a card by its
+  // title (the most natural grab target). Text selection is already
+  // suppressed via `user-select: none` on .task in CSS, so the JS-level
+  // preventDefault was redundant AND breaking the primary interaction.
 
   // For URL-tasks, wrap the title and a link-open icon in a row so they sit inline.
   if (t.url) {
@@ -10106,7 +10103,26 @@ function positionCtxMenu(menu, x, y) {
 }
 
 function closeAllCtxMenus() {
-  document.querySelectorAll('.task-ctx-menu').forEach(m => m.remove());
+  // v170: Two kinds of context menus share the .task-ctx-menu class:
+  //   1. The static #taskCtxMenu element (for task cards) — lives in the
+  //      HTML and is shown/hidden via display:none. NEVER remove this from
+  //      the DOM, or right-click on cards will silently stop working.
+  //   2. Dynamic menus created by openQuestIdeaCtxMenu() and similar — these
+  //      are appended to <body> on demand and SHOULD be removed.
+  // Earlier this function removed all .task-ctx-menu elements indiscriminately,
+  // destroying the static one. Fix: skip the element with id="taskCtxMenu".
+  document.querySelectorAll('.task-ctx-menu').forEach(m => {
+    if (m.id === 'taskCtxMenu') {
+      // Static menu — just hide it
+      m.style.display = 'none';
+      m.setAttribute('aria-hidden', 'true');
+    } else {
+      // Dynamic menu — remove from DOM
+      m.remove();
+    }
+  });
+  // Also clear ctxMenuTaskId so subsequent right-clicks behave fresh
+  ctxMenuTaskId = null;
 }
 
 // ============ JOURNAL ============
