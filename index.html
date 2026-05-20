@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v179</title>
+<title>Kanban Quest — v191</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -54,6 +54,9 @@
     position: fixed;
     inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    /* v191: Non-tiling to avoid visible seams at 200×200 tile boundaries */
+    background-size: cover;
+    background-repeat: no-repeat;
     pointer-events: none;
     z-index: 1;
     opacity: 0.5;
@@ -643,6 +646,12 @@
     border-color: var(--accent);
     background: rgba(212, 255, 58, 0.02);
   }
+  /* v188: When the column is in blocked state (Doing already occupied), the
+     drag-over highlight uses red instead of the accent chartreuse — matching
+     the rejection signal language so the user reads it as "no" not "yes". */
+  .column.drag-over.doing-blocked {
+    border-color: rgba(220, 60, 60, 0.6);
+  }
   .column-header {
     padding: 20px 20px 16px;
     border-bottom: 1px solid var(--line-soft);
@@ -821,20 +830,107 @@
     30%  { box-shadow: 0 0 0 6px rgba(212, 255, 58, 0.15); }
     100% { box-shadow: 0 0 0 0 transparent; }
   }
-  /* v176: Card "knocked out" of Doing into Blocked when the Doing slot is
-     reassigned. A quick shake + amber pulse signals the displacement, then
-     the card settles in its new column. ~700ms total. */
-  .task.knocked-out {
-    animation: task-knocked-out 0.7s ease-out;
+  /* v184: Preempted block state — shown while hovering the Doing column with
+     a drag, when the global Doing slot is already occupied. Static (not
+     animated) so it reads as a steady "not allowed" signal during hover.
+     The flash animation (.drop-rejected) is only used on actual drop attempts.
+     v185: Replaced emoji stop icon with a sleek SVG (thin circle + slash) to
+     match the app's minimal dark aesthetic. Color uses the same muted red as
+     the column wash, not the saturated emoji red.
+     v186: Added a text label below the icon explaining why the drop is
+     blocked ("You have an on-going task"). */
+  .column.doing-blocked {
+    background: rgba(220, 60, 60, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(220, 60, 60, 0.35);
+    /* Browser cursor reflects the rejection via dropEffect='none' */
   }
-  @keyframes task-knocked-out {
-    0%   { transform: translateX(0)    rotate(0);    box-shadow: 0 0 0 0 transparent; }
-    10%  { transform: translateX(-8px) rotate(-2deg); box-shadow: 0 0 0 3px rgba(255, 179, 71, 0.25); }
-    25%  { transform: translateX(10px) rotate(2deg);  box-shadow: 0 0 0 6px rgba(255, 179, 71, 0.2); }
-    40%  { transform: translateX(-6px) rotate(-1deg); box-shadow: 0 0 0 4px rgba(255, 179, 71, 0.15); }
-    55%  { transform: translateX(4px)  rotate(1deg);  box-shadow: 0 0 0 2px rgba(255, 179, 71, 0.08); }
-    75%  { transform: translateX(0)    rotate(0);    box-shadow: 0 0 0 0 transparent; }
-    100% { transform: translateX(0)    rotate(0);    box-shadow: 0 0 0 0 transparent; }
+  /* Stop icon — sits just above column center, with the label directly below.
+     v187: Shrunk from 56px → 36px so the cluster feels lighter and the icon
+     doesn't dominate the column. Tightened spacing so icon + label read as
+     one centered unit. */
+  .column.doing-blocked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, calc(-50% - 14px));
+    width: 36px;
+    height: 36px;
+    /* Inline SVG: thin circle outline + diagonal slash, both in muted red.
+       Stroke width 2.5 keeps the line elegant; cap=round softens endpoints. */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='27' fill='none' stroke='%23c84848' stroke-width='2.5'/><line x1='13' y1='13' x2='51' y2='51' stroke='%23c84848' stroke-width='2.5' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: 0.85;
+    pointer-events: none;
+    z-index: 10;
+    /* Subtle pulse so the icon doesn't feel completely static and dead */
+    animation: doing-blocked-pulse 1.6s ease-in-out infinite;
+  }
+  /* Text label below the icon — centered, sits ~8px under the icon */
+  .column.doing-blocked::before {
+    content: 'You have an on-going task';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, calc(-50% + 16px));
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #c84848;
+    pointer-events: none;
+    z-index: 10;
+    text-align: center;
+    /* Allow wrapping if needed in narrow columns */
+    max-width: 80%;
+    line-height: 1.4;
+    opacity: 0.9;
+  }
+  @keyframes doing-blocked-pulse {
+    0%, 100% { transform: translate(-50%, calc(-50% - 14px)) scale(1);    opacity: 0.85; }
+    50%      { transform: translate(-50%, calc(-50% - 14px)) scale(1.04); opacity: 1; }
+  }
+
+  /* v183: Drop rejected on Doing column when it's already occupied. The
+     column briefly flashes a red wash and shows a stop icon centered over
+     it. ~900ms total. v185: emoji replaced with the same SVG icon as hover. */
+  .column.drop-rejected {
+    animation: column-drop-rejected 0.9s ease-out;
+    position: relative;
+  }
+  @keyframes column-drop-rejected {
+    0%   { background: var(--bg-card); box-shadow: 0 0 0 0 transparent; }
+    15%  { background: rgba(220, 60, 60, 0.18); box-shadow: 0 0 0 3px rgba(220, 60, 60, 0.5); }
+    50%  { background: rgba(220, 60, 60, 0.12); box-shadow: 0 0 0 2px rgba(220, 60, 60, 0.3); }
+    100% { background: var(--bg-card); box-shadow: 0 0 0 0 transparent; }
+  }
+  /* Stop-icon overlay that appears centered over the rejected column.
+     v185: Sleek SVG (thin circle + slash) instead of emoji. */
+  .column.drop-rejected::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.6);
+    width: 64px;
+    height: 64px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='27' fill='none' stroke='%23c84848' stroke-width='2.5'/><line x1='13' y1='13' x2='51' y2='51' stroke='%23c84848' stroke-width='2.5' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10;
+    animation: stop-icon-flash 0.9s ease-out;
+  }
+  @keyframes stop-icon-flash {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+    20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    35%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    75%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
   }
 
   /* Companion pulse on the pinned tab that received the assignment. */
@@ -1988,6 +2084,10 @@
     /* Drag-over inside a Quest uses the quest's color, not the universal accent */
     border-color: var(--current-quest-color, var(--accent));
     background: rgba(var(--current-quest-color-rgb, 212, 255, 58), 0.04);
+  }
+  /* v188: Quest container also red on blocked Doing hover */
+  .quest-container .column.drag-over.doing-blocked {
+    border-color: rgba(220, 60, 60, 0.6);
   }
   /* Inside a Quest, the kanban columns use a recessed-dark fill rather than
      --bg-soft. The Quest sub-tabs and the Quest's backlog board need to match
@@ -4454,6 +4554,10 @@
     position: absolute;
     inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    /* v191: Stretched to fill the overlay so the 200×200 noise SVG doesn't
+       tile and create visible seams. Single instance, scaled to cover. */
+    background-size: cover;
+    background-repeat: no-repeat;
     pointer-events: none;
     opacity: 0.4;
   }
@@ -5200,7 +5304,7 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v179</span>
+      <span class="eyebrow">— Kanban / v191</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <!-- Right-side cluster: level + sync indicator. User menu has moved
@@ -5509,7 +5613,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v179</span>
+      <span class="footer-version">v191</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
@@ -6385,43 +6489,44 @@ function showCatSpeech(text, durationMs = 3000) {
   }, durationMs);
 }
 
-// Bump the currently-Doing task (if any, and not equal to the incoming task)
-// to Blocked, log a context-switch comment on it, and play the knock-out
-// animation. Returns true if a swap happened.
-function bumpExistingDoingTask(incomingTaskId) {
+// Reject a Doing-column drop when the Doing slot is already occupied. Plays
+// the flash animation on the Doing columns (red wash + stop icon bounce).
+// v186: Cat speech is no longer fired here — it fires on dragend if the user
+// hovered the blocked zone at any point during the drag, regardless of where
+// they ultimately released.
+//
+// Returns true if the drop should be rejected, false if it can proceed.
+function rejectDoingIfOccupied(incomingTaskId) {
   const existing = findGlobalDoingTask(incomingTaskId);
-  if (!existing) return false;
-  const incoming = state.tasks.find(x => x.id === incomingTaskId);
+  if (!existing) return false; // Slot is free — let the drop proceed
+
+  // Visual rejection flash on both Doing columns (main board + any open Quest
+  // board) so the visual is consistent regardless of which board the user
+  // dropped onto.
+  const doingCols = document.querySelectorAll(
+    '.column[data-col="doing"], .column[data-quest-col="doing"]'
+  );
+  doingCols.forEach(col => {
+    col.classList.remove('drop-rejected');
+    void col.offsetWidth; // force reflow so the class re-fires animation
+    col.classList.add('drop-rejected');
+    setTimeout(() => col.classList.remove('drop-rejected'), 900);
+  });
+
+  return true; // Drop rejected
+}
+
+// v184: Lightweight check used by dragover — returns true if hovering this
+// task over Doing would be rejected (Doing already occupied by a different
+// task). Doesn't trigger any visual itself; the caller toggles the .doing-blocked
+// class on the column based on this. The speech bubble + red flash only fire
+// on actual drop attempts to avoid noise during normal hovering.
+function wouldRejectDoingDrop(incomingTaskId) {
+  if (!incomingTaskId) return false;
+  const incoming = state.tasks.find(t => t.id === incomingTaskId);
   if (!incoming) return false;
-
-  // Move to Blocked
-  existing.col = 'blocked';
-
-  // Log a comment on the bumped task so the user can see the context switch
-  if (!Array.isArray(existing.focusLog)) existing.focusLog = [];
-  existing.focusLog.push({
-    id: 'e_' + uid(),
-    time: nowMs(),
-    note: `Switched to task: ${incoming.text}`,
-    kind: 'comment',
-  });
-
-  // Trigger the knock-out animation. Render() happens via the caller; we add
-  // the class via a microtask so the new DOM element exists before we animate.
-  queueMicrotask(() => {
-    const el = document.querySelector(`.task[data-id="${existing.id}"]`);
-    if (el) {
-      el.classList.add('knocked-out');
-      setTimeout(() => el.classList.remove('knocked-out'), 750);
-    }
-  });
-
-  // Speech bubble — pick a random phrase from the pool. Hold time bumped to
-  // 4.5s in v177 since the new phrases are longer and need reading time.
-  const phrase = CAT_SWAP_PHRASES[Math.floor(Math.random() * CAT_SWAP_PHRASES.length)];
-  showCatSpeech(phrase, 4500);
-
-  return true;
+  if (incoming.type === 'quest') return false; // Quests never get this rule
+  return !!findGlobalDoingTask(incomingTaskId);
 }
 
 // Track which task card the mouse is currently over. Used by the keyboard
@@ -6495,6 +6600,10 @@ let currentQuestId = null;
 let currentQuestSubView = 'active';
 // UI-only: id of the currently-dragging task (for dragover targets to inspect)
 let currentDraggedTaskId = null;
+// v186: Tracks whether the current drag hovered a blocked Doing column at any
+// point. Set true on dragover when hovering Doing while occupied. Read on
+// dragend to decide whether the cat should speak. Cleared on dragstart.
+let __dragHoveredBlockedDoing = false;
 
 function xpForLevel(lvl) { return 100 + (lvl - 1) * 50; }
 function xpForPain(p, type) {
@@ -7940,12 +8049,29 @@ function renderTask(t) {
     }
     el.classList.add('dragging');
     currentDraggedTaskId = t.id;
+    // v186: Reset the blocked-Doing-hover flag at the start of every new drag.
+    __dragHoveredBlockedDoing = false;
     e.dataTransfer.setData('text/plain', t.id);
     e.dataTransfer.effectAllowed = 'move';
   });
   el.addEventListener('dragend', () => {
     el.classList.remove('dragging');
     currentDraggedTaskId = null;
+    // v186: If the drag hovered a blocked Doing zone at any point — regardless
+    // of where the user ultimately dropped — fire the cat speech. The wisdom
+    // applies whether they wisely dropped elsewhere or tried again into Doing.
+    if (__dragHoveredBlockedDoing) {
+      const phrase = CAT_SWAP_PHRASES[Math.floor(Math.random() * CAT_SWAP_PHRASES.length)];
+      // v189: Extended hold time so longer epic phrases have comfortable
+      // reading time. Some lines run 70+ characters; 4.5s felt rushed.
+      showCatSpeech(phrase, 7000);
+      __dragHoveredBlockedDoing = false;
+    }
+    // Clean up any lingering blocked-state visuals on Doing columns (in case
+    // dragleave didn't fire — e.g. user released outside any column).
+    document.querySelectorAll('.column.doing-blocked').forEach(col => {
+      col.classList.remove('doing-blocked');
+    });
     // Clean up any lingering absorb visuals (both charging and committed states)
     document.querySelectorAll('.absorb-target, .absorb-charging').forEach(q => {
       q.classList.remove('absorb-target', 'absorb-charging');
@@ -8111,13 +8237,32 @@ document.querySelectorAll('.column').forEach(col => {
     e.preventDefault();
     col.classList.add('drag-over');
     e.dataTransfer.dropEffect = 'move';
+    // v184: When hovering the Doing column while another task is already in
+    // Doing, signal blocked state preemptively (stop icon + red tint) so the
+    // user knows the drop won't be accepted before they commit. The flash
+    // animation only fires on actual drop attempts; this hover state is
+    // static / steady so it doesn't get visually noisy.
+    if (col.dataset.col === 'doing' && wouldRejectDoingDrop(currentDraggedTaskId)) {
+      col.classList.add('doing-blocked');
+      e.dataTransfer.dropEffect = 'none'; // cursor reflects the rejection
+      // v186: Remember that this drag touched a blocked Doing zone, so we
+      // can fire the cat speech on dragend (regardless of where the user
+      // finally drops the card).
+      __dragHoveredBlockedDoing = true;
+    } else {
+      col.classList.remove('doing-blocked');
+    }
   });
   col.addEventListener('dragleave', (e) => {
-    if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+    if (!col.contains(e.relatedTarget)) {
+      col.classList.remove('drag-over');
+      col.classList.remove('doing-blocked');
+    }
   });
   col.addEventListener('drop', (e) => {
     e.preventDefault();
     col.classList.remove('drag-over');
+    col.classList.remove('doing-blocked');
     const id = e.dataTransfer.getData('text/plain');
     const task = state.tasks.find(t => t.id === id);
     if (!task) return;
@@ -8127,14 +8272,23 @@ document.querySelectorAll('.column').forEach(col => {
     const becomingDone = newCol === 'done' && !wasDone;
     const becomingDoing = newCol === 'doing' && !wasDoing;
 
-    // v176: Global Doing cap. If this task is entering Doing and another task
-    // is already there (anywhere — main board OR a Quest sub-board), bump the
-    // existing one to Blocked + log the context-switch comment + cat speech.
+    // v183: Hard reject — only one non-Quest task may sit in Doing across the
+    // entire app. If another task is already there, reject this drop with a
+    // visual signal (column flash + stop icon) and a cat speech bubble.
     if (becomingDoing && task.type !== 'quest') {
-      bumpExistingDoingTask(task.id);
+      if (rejectDoingIfOccupied(task.id)) {
+        return; // Abort the drop — no state change
+      }
     }
 
     task.col = newCol;
+
+    // v190: If the focused task is being moved OUT of Doing to any other
+    // column, end the focus session (both fullscreen overlay and minimized
+    // timer pill). The user no longer considers this task "in progress."
+    if (wasDoing && !becomingDoing && focusTaskId === task.id) {
+      exitFocus();
+    }
 
     if (becomingDone) {
       task.completedAt = nowMs();
@@ -8610,13 +8764,29 @@ function bindQuestBoardDnD() {
       e.preventDefault();
       col.classList.add('drag-over');
       e.dataTransfer.dropEffect = 'move';
+      // v184: Preempt the Doing-full rejection here too — Quest sub-boards
+      // share the global Doing slot, so hovering Quest's Doing column while
+      // the slot is occupied signals blocked state.
+      if (col.dataset.questCol === 'doing' && wouldRejectDoingDrop(currentDraggedTaskId)) {
+        col.classList.add('doing-blocked');
+        e.dataTransfer.dropEffect = 'none';
+        // v186: Same hover-tracking as main board so the cat speech still
+        // fires on dragend even if user hovered Quest's blocked Doing.
+        __dragHoveredBlockedDoing = true;
+      } else {
+        col.classList.remove('doing-blocked');
+      }
     });
     col.addEventListener('dragleave', (e) => {
-      if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+      if (!col.contains(e.relatedTarget)) {
+        col.classList.remove('drag-over');
+        col.classList.remove('doing-blocked');
+      }
     });
     col.addEventListener('drop', (e) => {
       e.preventDefault();
       col.classList.remove('drag-over');
+      col.classList.remove('doing-blocked');
       const id = e.dataTransfer.getData('text/plain');
       const task = state.tasks.find(t => t.id === id);
       if (!task) return;
@@ -8628,14 +8798,21 @@ function bindQuestBoardDnD() {
       const becomingDone = newCol === 'done' && !wasDone;
       const becomingDoing = newCol === 'doing' && !wasDoing;
 
-      // v176: Global Doing cap — bump any existing Doing task to Blocked
-      // BEFORE setting this task's column. The bump function logs a comment
-      // on the displaced task and plays the cat speech bubble.
+      // v183: Hard reject if global Doing slot is occupied. See main board
+      // drop handler for the same logic.
       if (becomingDoing && task.type !== 'quest') {
-        bumpExistingDoingTask(task.id);
+        if (rejectDoingIfOccupied(task.id)) {
+          return;
+        }
       }
 
       task.col = newCol;
+
+      // v190: End focus session when focused task moves out of Doing.
+      if (wasDoing && !becomingDoing && focusTaskId === task.id) {
+        exitFocus();
+      }
+
       if (becomingDone) {
         task.completedAt = nowMs();
         handleCompletion(task, e.clientX, e.clientY);
@@ -8679,6 +8856,8 @@ function openTaskCtxMenu(taskId, x, y) {
       icon: '↓', label: 'Send to Backlog', danger: false,
       action: () => {
         t.backlog = true;
+        // v190: Sending the focused task to backlog also ends focus mode.
+        if (focusTaskId === t.id) exitFocus();
         save(); render();
       }
     });
@@ -8710,6 +8889,8 @@ function openTaskCtxMenu(taskId, x, y) {
         // Unlink children rather than cascade-delete
         state.tasks.forEach(c => { if (c.questId === taskId) c.questId = null; });
       }
+      // v190: If deleting the focused task, end focus mode first
+      if (focusTaskId === taskId) exitFocus();
       state.tasks = state.tasks.filter(x => x.id !== taskId);
       save(); render();
     }
