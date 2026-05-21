@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v205</title>
+<title>Kanban Quest — v206</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -1077,13 +1077,21 @@
          the contrast is now strong enough to actually read.
        - Line-through retained as the primary "done" signal.
        - Reduced text-decoration thickness so the strike doesn't dominate
-         the title visually. */
+         the title visually.
+       v206: Bypass the 3-line clamp from v203. Done cards should show the
+       full title — they're completed work the user might want to read in
+       full as a history view. The clamp + line-through + small card height
+       were combining to render the title clipped + visually broken. Reset
+       display to block so the text flows normally with strikethrough. */
     color: var(--ink);
     opacity: 0.72;
     line-height: 1.5;
     text-decoration: line-through;
     text-decoration-color: var(--ink-faint);
     text-decoration-thickness: 1px;
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
   }
   /* v200: Done cards no longer get the bottom fade gradient (.is-clipped::after).
      The fade was meant to hint "more content below" on overflow, but on done
@@ -1093,13 +1101,13 @@
     display: none;
   }
   /* v200: Done cards get more vertical breathing room so the strikethrough
-     title sits comfortably with adequate margin top and bottom. */
+     title sits comfortably with adequate margin top and bottom.
+     v206: Removed min-height/max-height overrides — done cards now size to
+     their content like any other card, since the title clamp was removed
+     (full title is visible). Padding only. */
   .task.done {
-    padding-top: 18px;
-    padding-bottom: 16px;
-    min-height: 0;
-    /* Slightly raised max-height so most titles fit without triggering clip detection */
-    max-height: 260px;
+    padding-top: 16px;
+    padding-bottom: 14px;
   }
 
   /* Link task — task created from pasting a URL. Distinguishable by the open-link icon. */
@@ -5479,7 +5487,7 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v205</span>
+      <span class="eyebrow">— Kanban / v206</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <!-- Right-side cluster: level + sync indicator. User menu has moved
@@ -5788,7 +5796,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v205</span>
+      <span class="footer-version">v206</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
