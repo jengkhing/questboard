@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Quest — v191</title>
+<title>Kanban Quest — v205</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -798,6 +798,36 @@
   }
   .task:hover { border-color: var(--ink-faint); transform: translateY(-1px); }
   .task.dragging { opacity: 0.4; cursor: grabbing; }
+  /* v193: Drop indicator — was a 56px slot-opening gap (clunky, caused
+     layout shifts as cursor moved). v195: Switched to a thin chartreuse line
+     painted via box-shadow so it doesn't conflict with existing ::before/::after
+     pseudo-elements on .task (used for is-clipped fade and is-quest-linked stripe).
+     No layout shift, no animation lag — the line tracks the cursor instantly
+     because nothing reflows.
+     Syntax breakdown: `0 -5px 0 0 var(--accent)` = no x-offset, -5px y-offset
+     (above the card), 0px blur, 0px spread, solid accent color → gives a 2px
+     equivalent line sitting in the gap above the card. The blurred shadow
+     adds a soft glow. */
+  .task.drop-slot-above {
+    box-shadow: 0 -5px 0 -3px var(--accent), 0 -5px 10px -2px rgba(212, 255, 58, 0.4);
+  }
+  .task.drop-slot-below {
+    box-shadow: 0 5px 0 -3px var(--accent), 0 5px 10px -2px rgba(212, 255, 58, 0.4);
+  }
+  /* v196: Subtle neighbor card shifting to suggest "make space" for the
+     incoming card. Cards downstream of the drop position shift down by 6px
+     via transform:translateY. Transform doesn't trigger layout reflow, so
+     the shift is GPU-accelerated and silky-smooth (no jank from layout
+     thrashing). The line indicator on the target card + the shift on
+     downstream siblings together read as a clear slot opening. */
+  .task.drop-slot-shift-down {
+    transform: translateY(6px);
+    transition: transform 0.14s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+  .task.drop-slot-shift-up {
+    transform: translateY(-6px);
+    transition: transform 0.14s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
 
   /* Quest-linked task — subtle colored left stripe shows which pinned quest
      the task belongs to. Tinge only on the border + tiny corner dot; the
@@ -1005,6 +1035,14 @@
     user-select: none;
     -webkit-user-select: none;
     border-radius: 2px;
+    /* v203: Clamp long titles to 3 lines on the card with native ellipsis.
+       Full title remains available via the task detail overlay (click the card)
+       and via the `title` attribute (hover tooltip). Keeps cards compact even
+       when the input maxlength was bumped to 280 chars in v203. */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   /* Edit state — no visual chrome at all. Just the blinking accent caret
      signals "you're editing." Card surface stays unchanged.
@@ -1033,20 +1071,35 @@
     overflow-wrap: break-word;
   }
   .task.done .task-text {
-    /* v174: Was --ink-faint (#55555a — almost invisible). Bumped to --ink-dim
-       so the title stays muted but actually readable. The line-through itself
-       carries enough of the "done" signal; we don't need to also bury the
-       color. Slightly looser line-height so wrapped lines don't crowd. */
-    color: var(--ink-dim);
+    /* v200: Made done text readable while keeping it visually "archived":
+       - Color bumped from --ink-dim (#9b9b9b ish) to a softer warm grey
+         (--ink) at 70% opacity — still clearly muted vs active cards, but
+         the contrast is now strong enough to actually read.
+       - Line-through retained as the primary "done" signal.
+       - Reduced text-decoration thickness so the strike doesn't dominate
+         the title visually. */
+    color: var(--ink);
+    opacity: 0.72;
     line-height: 1.5;
     text-decoration: line-through;
     text-decoration-color: var(--ink-faint);
+    text-decoration-thickness: 1px;
   }
-  /* v174: Slightly more vertical padding on done cards so the title (now
-     line-through, slightly looser) doesn't feel cramped against the card edges. */
+  /* v200: Done cards no longer get the bottom fade gradient (.is-clipped::after).
+     The fade was meant to hint "more content below" on overflow, but on done
+     cards it consumed half the card and made titles look broken. Done cards
+     should read as muted archived items, not as visually damaged. */
+  .task.done.is-clipped::after {
+    display: none;
+  }
+  /* v200: Done cards get more vertical breathing room so the strikethrough
+     title sits comfortably with adequate margin top and bottom. */
   .task.done {
-    padding-top: 16px;
-    padding-bottom: 14px;
+    padding-top: 18px;
+    padding-bottom: 16px;
+    min-height: 0;
+    /* Slightly raised max-height so most titles fit without triggering clip detection */
+    max-height: 260px;
   }
 
   /* Link task — task created from pasting a URL. Distinguishable by the open-link icon. */
@@ -1066,7 +1119,11 @@
     line-height: 1.35;
     /* Single line + ellipsis: link labels don't need to be fully visible on the
        card — the full label + URL is one click away in the detail overlay.
-       Keeps narrow columns clean instead of breaking long URLs into many lines. */
+       Keeps narrow columns clean instead of breaking long URLs into many lines.
+       v203: Reset the 3-line clamp from base .task-text — link titles use
+       single-line ellipsis, not multi-line clamp. */
+    display: block;
+    -webkit-line-clamp: unset;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1214,6 +1271,14 @@
   .pip.on-3 { background: var(--pain-3); }
   .pip.on-4 { background: var(--pain-4); }
   .pip.on-5 { background: var(--pain-5); }
+  /* v201: Pain pips on done cards inherit the muted treatment — desaturated +
+     lower opacity so they read as "archived signal" rather than active intensity.
+     The hue is still recognizable at a glance, but the visual weight matches
+     the rest of the done-card hierarchy (strikethrough title + dim text). */
+  .task.done .pip {
+    opacity: 0.45;
+    filter: saturate(0.55);
+  }
   .pain-label {
     font-family: var(--mono);
     font-size: 9px;
@@ -3387,11 +3452,12 @@
   /* Entry row — two columns: source on left, note + timestamp on right */
   .journal-entry {
     display: grid;
-    grid-template-columns: minmax(180px, 240px) 1fr auto;
+    /* v197: Narrower source column since content collapsed to one inline row */
+    grid-template-columns: minmax(160px, 220px) 1fr auto;
     gap: 20px;
     padding: 10px 4px;
     border-bottom: 1px solid var(--line-soft);
-    align-items: baseline;
+    align-items: center;
   }
   .journal-entry:hover {
     background: rgba(255, 255, 255, 0.015);
@@ -3402,7 +3468,72 @@
     color: var(--ink-dim);
     line-height: 1.4;
     word-break: break-word;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
   }
+  /* v197: Single-line source readout. The dot encodes kind (focus vs comment)
+     via shade only — no text labels. The pill encodes task + quest-of-origin
+     via a gentle background tint in the parent quest's color. */
+  .journal-dot {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  /* Focus check-in dot — slightly lighter / more present grey */
+  .journal-dot.kind-focus {
+    background: var(--ink-dim);
+  }
+  /* Comment dot — muted dark grey, recedes into the background */
+  .journal-dot.kind-comment {
+    background: var(--ink-faint);
+    opacity: 0.55;
+  }
+  /* Task pill — v198: dropped border/box look. Now a subtle background tint
+     behind the text (like a highlighter swipe), with the parent quest's color
+     determining the tint. Less container-ish, more typographic.
+     v199: Aligned with surrounding text — pill text shares the same font size
+     and line-height as the note, sits on the same baseline. */
+  .journal-task-pill {
+    /* inline (not inline-block) so it flows with the text baseline naturally */
+    display: inline;
+    font-family: var(--serif);
+    /* Match the note's font-size so the pill's text aligns with surrounding text */
+    font-size: inherit;
+    line-height: inherit;
+    color: var(--ink);
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.04);
+    /* When used inline inside a note, don't constrain width or truncate —
+       wraps naturally. (The source-column instance has its own width
+       constraints from its container.) */
+    /* v199: Reset italic in case the pill is nested inside an italic note */
+    font-style: normal;
+    /* Tiny negative margin tightens the highlight to the text bounding box */
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  .journal-task-pill.has-quest {
+    /* Just a soft quest-color wash, no border, no left stripe */
+    background: color-mix(in srgb, var(--pill-color) 14%, transparent);
+    color: var(--ink);
+  }
+  /* In the source column the pill needs to be a constrained block-ish element
+     so it truncates with ellipsis. Inherit-but-override that case. */
+  .journal-source .journal-task-pill {
+    display: inline-block;
+    font-size: 12.5px;
+    line-height: 1.3;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  /* Legacy classes retained for backwards-compat with any markup still using them */
   .journal-source .quest-tag {
     display: inline-block;
     font-family: var(--mono);
@@ -4527,13 +4658,22 @@
     position: fixed;
     inset: 0;
     z-index: 200;
+    /* v192: Reworked background to eliminate a visible horizontal seam where
+       the radial gradient ended (~60% from top). The old gradient faded to
+       transparent at 60%, leaving the lower half visibly darker than the
+       upper half. Now: gradients extend across the full viewport with much
+       softer falloffs, AND a thin vignette ties the whole canvas together. */
     background:
-      radial-gradient(ellipse at top, rgba(212, 255, 58, 0.05) 0%, transparent 60%),
-      radial-gradient(ellipse at bottom right, rgba(255, 179, 71, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse 120% 90% at 50% 0%, rgba(212, 255, 58, 0.04) 0%, transparent 100%),
+      radial-gradient(ellipse 80% 70% at 100% 100%, rgba(255, 179, 71, 0.025) 0%, transparent 100%),
       var(--bg);
     display: none;
     flex-direction: column;
     overflow-y: auto;
+    /* v205: Lock horizontal — prevents very long titles from creating a
+       horizontal scrollbar that could push the page or parent embed wider. */
+    overflow-x: hidden;
+    max-width: 100vw;
   }
   .focus-overlay.show { display: flex; }
   /* v179: Minimize animation — the overlay shrinks toward the bottom-right
@@ -4674,6 +4814,12 @@
     width: 100%;
     position: relative;
     z-index: 2;
+    /* v205: Ensure padding stays inside max-width (so the box never exceeds
+       its declared width). Without this, padding adds on top of width 100%
+       and can spill past the parent's bounds on some layout engines. */
+    box-sizing: border-box;
+    /* And clip just in case anything inside still tries to escape horizontally */
+    min-width: 0;
   }
   .focus-title {
     font-family: var(--serif);
@@ -4684,7 +4830,14 @@
     color: var(--ink);
     text-align: center;
     margin-bottom: 32px;
+    /* v205: Force wrapping for very long titles (input maxlength bumped to
+       280 in v203). word-break: break-word breaks at sensible points;
+       overflow-wrap: anywhere is the safety net for unbroken strings.
+       max-width prevents the title from stretching the layout if a single
+       word can't be broken at any sensible point. */
     word-break: break-word;
+    overflow-wrap: anywhere;
+    max-width: 100%;
   }
   .focus-desc {
     font-family: var(--serif);
@@ -4733,6 +4886,28 @@
     background: var(--accent-warm);
     border-color: var(--accent-warm);
     color: var(--bg);
+  }
+  /* v204: Tiny instruction hint below the action button row. Mono caps in
+     muted ink so it reads as a system hint, not a piece of content. */
+  .focus-actions-hint {
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    opacity: 0.7;
+    text-align: center;
+  }
+  .focus-actions-hint kbd {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 1px 5px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    color: var(--ink-dim);
+    background: rgba(255, 255, 255, 0.03);
+    margin: 0 1px;
   }
 
   /* Focus mode comments — composer + thread, scoped to the focused task.
@@ -5304,7 +5479,7 @@
 <div class="app">
   <header>
     <div class="brand">
-      <span class="eyebrow">— Kanban / v191</span>
+      <span class="eyebrow">— Kanban / v205</span>
       <h1>Quest <em>board.</em></h1>
     </div>
     <!-- Right-side cluster: level + sync indicator. User menu has moved
@@ -5364,13 +5539,13 @@
   <div class="board" id="board" data-view-target="active">
     <div class="column" data-col="todo">
       <div class="column-header">
-        <span class="column-title">Todo</span>
+        <span class="column-title">Priorities</span>
         <span class="column-count" data-count="todo">0</span>
       </div>
       <div class="column-body" data-body="todo"></div>
       <div class="add-task">
         <div class="add-row">
-          <input class="add-input" data-add="todo" placeholder="+ new" maxlength="140">
+          <input class="add-input" data-add="todo" placeholder="+ new" maxlength="280">
           <div class="pain-select" data-pain-select="todo">
             <span class="pain-select-label">Pain</span>
             <div class="pain-select-pips"></div>
@@ -5409,7 +5584,7 @@
     <div class="backlog-body" id="backlogBody"></div>
     <div class="add-task backlog-add">
       <div class="add-row">
-        <input class="add-input" data-add="backlog" placeholder="+ new" maxlength="140">
+        <input class="add-input" data-add="backlog" placeholder="+ new" maxlength="280">
         <div class="pain-select" data-pain-select="backlog">
           <span class="pain-select-label">Pain</span>
           <div class="pain-select-pips"></div>
@@ -5482,13 +5657,13 @@
       <div class="board" id="questBoard">
         <div class="column" data-quest-col="todo">
           <div class="column-header">
-            <span class="column-title">Todo</span>
+            <span class="column-title">Priorities</span>
             <span class="column-count" data-quest-count="todo">0</span>
           </div>
           <div class="column-body" data-quest-body="todo"></div>
           <div class="add-task">
             <div class="add-row">
-              <input class="add-input" data-add="quest-todo" placeholder="+new" maxlength="140">
+              <input class="add-input" data-add="quest-todo" placeholder="+ new" maxlength="280">
               <div class="pain-select" data-pain-select="quest-todo">
                 <span class="pain-select-label">Pain</span>
                 <div class="pain-select-pips"></div>
@@ -5530,7 +5705,7 @@
         <div class="backlog-body" id="questBacklogBody"></div>
         <div class="add-task backlog-add">
           <div class="add-row">
-            <input class="add-input" data-add="quest-backlog" placeholder="+new" maxlength="140">
+            <input class="add-input" data-add="quest-backlog" placeholder="+ new" maxlength="280">
             <div class="pain-select" data-pain-select="quest-backlog">
               <span class="pain-select-label">Pain</span>
               <div class="pain-select-pips"></div>
@@ -5613,7 +5788,7 @@
       <button class="legend-clear" id="legendClear">× clear filter</button>
     </div>
     <div class="footer-right">
-      <span class="footer-version">v191</span>
+      <span class="footer-version">v205</span>
       <button id="resetBtn">Reset everything</button>
     </div>
   </footer>
@@ -5939,7 +6114,14 @@
     <div class="focus-desc" id="focusDesc"></div>
     <div class="focus-actions">
       <button class="focus-action-btn primary" id="focusMarkDone">Mark task done</button>
+      <!-- v204: Explicit "Stop timer" action — gives users a clear way to
+           end the focus session without completing the task. Previously the
+           only way out was Esc, which felt undiscoverable. -->
+      <button class="focus-action-btn" id="focusStopTimer">Stop timer</button>
     </div>
+    <!-- v204: Tiny hint that exposes the keyboard / right-click way to
+         minimize the focus overlay (keeps the timer running, hides the UI). -->
+    <div class="focus-actions-hint">right-click or press <kbd>F</kbd> to minimize</div>
 
     <!-- Comments section: same composer + thread pattern as the task detail
          modal, but scoped to the focused task. Only comments (kind:'comment')
@@ -6445,6 +6627,213 @@ function findGlobalDoingTask(excludeTaskId) {
   );
 }
 
+// v193: Manual reorder support — each task has an `order` (number). Lower
+// values appear FIRST (top of column). When inserting between A and B, the
+// new order is the midpoint, so we never have to renumber siblings.
+//
+// computeAppendOrder: returns an `order` value that places a task at the END
+// of a given column scope (col + backlog flag + questId). New tasks use this.
+function computeAppendOrder(col, isBacklog, questId) {
+  const siblings = state.tasks.filter(t =>
+    t.col === col &&
+    !!t.backlog === !!isBacklog &&
+    (t.questId || null) === (questId || null) &&
+    t.type !== 'quest'
+  );
+  if (siblings.length === 0) return 1000; // First task in this scope
+  const maxOrder = Math.max(...siblings.map(t => (typeof t.order === 'number' ? t.order : 0)));
+  return maxOrder + 1000; // Generous gap for future midpoint inserts
+}
+
+// computeInsertOrder: returns an `order` value that places a task at a
+// specific position in a scope. `beforeTaskId` = the task it should land
+// ABOVE (will end up just before this id), or null for end-of-column.
+function computeInsertOrder(col, isBacklog, questId, beforeTaskId, draggedTaskId) {
+  // Find the siblings in target scope, sorted by current order — exclude
+  // the dragged task itself (so its old position doesn't influence the math).
+  const siblings = state.tasks
+    .filter(t =>
+      t.col === col &&
+      !!t.backlog === !!isBacklog &&
+      (t.questId || null) === (questId || null) &&
+      t.type !== 'quest' &&
+      t.id !== draggedTaskId
+    )
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  if (siblings.length === 0) return 1000;
+
+  // If beforeTaskId is null, drop at end
+  if (!beforeTaskId) {
+    return (siblings[siblings.length - 1].order || 0) + 1000;
+  }
+
+  const targetIdx = siblings.findIndex(t => t.id === beforeTaskId);
+  if (targetIdx === -1) {
+    // Fallback — target not in siblings, append
+    return (siblings[siblings.length - 1].order || 0) + 1000;
+  }
+
+  // Inserting ABOVE siblings[targetIdx]. New order = midpoint of (prev, target).
+  const target = siblings[targetIdx];
+  const prev = targetIdx > 0 ? siblings[targetIdx - 1] : null;
+  const targetOrder = target.order || 0;
+  if (!prev) {
+    // Inserting at the very top
+    return targetOrder - 1000;
+  }
+  const prevOrder = prev.order || 0;
+  return (prevOrder + targetOrder) / 2;
+}
+
+// migrateTaskOrder: assigns `order` values to any task missing one. Called
+// after initial load so legacy tasks pick up sensible orders based on their
+// current array position. Within each scope (col/backlog/questId), tasks are
+// numbered in their array sequence with 1000-unit gaps.
+function migrateTaskOrder() {
+  // Group tasks by scope
+  const scopes = new Map();
+  state.tasks.forEach(t => {
+    if (t.type === 'quest') return; // Quests don't get reorder
+    if (typeof t.order === 'number') return; // Already migrated
+    const key = `${t.col}|${!!t.backlog}|${t.questId || ''}`;
+    if (!scopes.has(key)) scopes.set(key, []);
+    scopes.get(key).push(t);
+  });
+  scopes.forEach(group => {
+    group.forEach((t, idx) => {
+      t.order = (idx + 1) * 1000;
+    });
+  });
+}
+
+// v193: Given a column body element and a cursor Y position, find the closest
+// task card and decide whether to drop ABOVE or BELOW it. Returns the id of
+// the task we're dropping above (or null = drop at end).
+function findDropBeforeTaskId(bodyEl, clientY, excludeTaskId) {
+  const cards = Array.from(bodyEl.querySelectorAll('.task'));
+  for (const card of cards) {
+    if (card.dataset.id === excludeTaskId) continue;
+    const rect = card.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    if (clientY < mid) {
+      return card.dataset.id;
+    }
+  }
+  return null; // Below all cards — append to end
+}
+
+// v193: Visual drop slot indicator. v196: Optimized for responsiveness +
+// added subtle neighbor card shifting:
+//   - Track the currently-marked card and position (above/below) in module
+//     state. Only mutate DOM when state actually changes — avoids redundant
+//     class toggles on every dragover.
+//   - When a slot is active on card X with position=above, all earlier siblings
+//     in the same column shift UP by 4px via .drop-slot-shift-up. Later siblings
+//     stay put. The dragged card's slot is "carved" by the upward shift of
+//     everything above plus the line on X itself.
+//   - Card shifts use transform:translateY, which is GPU-accelerated and
+//     doesn't trigger layout — no reflow, no jank.
+//   - rAF-throttled so we don't update more than once per frame.
+let __lastDropSlotEl = null;
+let __lastDropSlotPos = null; // 'above' | 'below' | null
+let __dropSlotRafScheduled = false;
+let __dropSlotPending = null; // { col, clientY, draggedTaskId } | null
+
+function updateDropSlotIndicator(col, clientY, draggedTaskId) {
+  __dropSlotPending = { col, clientY, draggedTaskId };
+  if (__dropSlotRafScheduled) return;
+  __dropSlotRafScheduled = true;
+  requestAnimationFrame(() => {
+    __dropSlotRafScheduled = false;
+    const args = __dropSlotPending;
+    __dropSlotPending = null;
+    if (!args) return;
+    _doUpdateDropSlotIndicator(args.col, args.clientY, args.draggedTaskId);
+  });
+}
+
+function _doUpdateDropSlotIndicator(col, clientY, draggedTaskId) {
+  // Find the body within this column (supports both main and quest columns)
+  const bodyEl = col.querySelector('[data-body], [data-quest-body]');
+  if (!bodyEl) return;
+  const beforeId = findDropBeforeTaskId(bodyEl, clientY, draggedTaskId);
+
+  // Resolve target element + position
+  let targetEl = null;
+  let pos = null;
+  if (beforeId) {
+    targetEl = bodyEl.querySelector(`.task[data-id="${beforeId}"]`);
+    pos = 'above';
+  } else {
+    // No "before" card → dropping at end. Mark the last non-dragged card with below.
+    const cards = Array.from(bodyEl.querySelectorAll('.task'))
+      .filter(c => c.dataset.id !== draggedTaskId);
+    if (cards.length > 0) {
+      targetEl = cards[cards.length - 1];
+      pos = 'below';
+    }
+  }
+
+  // No-op fast path: if nothing changed, return without touching the DOM.
+  if (targetEl === __lastDropSlotEl && pos === __lastDropSlotPos) return;
+
+  // State changed — clear the previous indicator first.
+  clearDropSlotIndicators();
+  if (!targetEl) {
+    __lastDropSlotEl = null;
+    __lastDropSlotPos = null;
+    return;
+  }
+
+  // Apply line indicator on the target card
+  targetEl.classList.add(pos === 'above' ? 'drop-slot-above' : 'drop-slot-below');
+
+  // Apply neighbor card shifts to suggest making space:
+  //   - When line is ABOVE target: shift target + everything after it DOWN
+  //     so the slot above target visually grows.
+  //   - When line is BELOW target (end-of-column): shift target + earlier
+  //     siblings UP so the slot below target visually grows. Actually for
+  //     end-of-column, the visual works better the other way: there's
+  //     already empty space below, so just the line is enough — skip shifting.
+  if (pos === 'above') {
+    // Find target's siblings in the same parent
+    const siblings = Array.from(bodyEl.children);
+    const targetIdx = siblings.indexOf(targetEl);
+    if (targetIdx >= 0) {
+      // Target and everything after it shift down by a small amount.
+      for (let i = targetIdx; i < siblings.length; i++) {
+        const sib = siblings[i];
+        if (sib === targetEl) continue; // don't shift the target itself, it has the line
+        if (sib.dataset.id === draggedTaskId) continue; // skip the dragged card
+        if (sib.classList && sib.classList.contains('task')) {
+          sib.classList.add('drop-slot-shift-down');
+        }
+      }
+    }
+  }
+
+  __lastDropSlotEl = targetEl;
+  __lastDropSlotPos = pos;
+}
+
+function clearDropSlotIndicators() {
+  // Faster than a global query: walk only marked elements + their siblings.
+  if (__lastDropSlotEl) {
+    __lastDropSlotEl.classList.remove('drop-slot-above', 'drop-slot-below');
+  }
+  // Some neighbor cards may still have shift classes — clear those too.
+  document.querySelectorAll('.task.drop-slot-shift-down, .task.drop-slot-shift-up').forEach(c => {
+    c.classList.remove('drop-slot-shift-down', 'drop-slot-shift-up');
+  });
+  // Belt-and-suspenders: also clean any leftover slot markers we don't have refs to
+  document.querySelectorAll('.task.drop-slot-above, .task.drop-slot-below').forEach(c => {
+    c.classList.remove('drop-slot-above', 'drop-slot-below');
+  });
+  __lastDropSlotEl = null;
+  __lastDropSlotPos = null;
+}
+
 // Cat speech bubble — temporarily shows a message above the main cat companion.
 // `text` is the message; `durationMs` is how long it stays visible (default 3s).
 // Phrase pool used when the global Doing slot is reassigned (v177). Also
@@ -6906,6 +7295,17 @@ function setSyncStatus(status, message) {
 }
 
 // ---- Serializers (state → row, row → state) ----
+//
+// v194: Task order persistence. The `order` JS field maps to `task_order`
+// in Postgres (`order` is a reserved SQL keyword, so we avoid it as a
+// column name). REQUIRED SCHEMA MIGRATION before deploying this to a
+// Supabase that doesn't yet have the column:
+//
+//   ALTER TABLE tasks ADD COLUMN task_order numeric;
+//
+// If the column doesn't exist yet, upserts will fail with PostgreSQL error
+// 42703 (column does not exist) — visible in the sync indicator. Once the
+// column is added, saves resume normally and orders persist across reloads.
 function taskToRow(t, userId) {
   return {
     id: t.id,
@@ -6927,6 +7327,8 @@ function taskToRow(t, userId) {
     pinned: !!t.pinned,
     pin_index: typeof t.pinIndex === 'number' ? t.pinIndex : null,
     color_index: typeof t.colorIndex === 'number' ? t.colorIndex : null,
+    // v193: Manual reorder support — sortable order within column scope
+    task_order: typeof t.order === 'number' ? t.order : null,
   };
 }
 function rowToTask(r) {
@@ -6948,6 +7350,8 @@ function rowToTask(r) {
     pinned: !!r.pinned,
     pinIndex: typeof r.pin_index === 'number' ? r.pin_index : undefined,
     colorIndex: typeof r.color_index === 'number' ? r.color_index : undefined,
+    // v193: Manual reorder support
+    order: typeof r.task_order === 'number' ? r.task_order : undefined,
   };
 }
 function visionToRow(v, userId) {
@@ -7099,6 +7503,8 @@ async function load() {
       }
     });
     rolloverVisionIfNeeded();
+    // v193: Assign `order` field to any task that lacks one (legacy migration)
+    migrateTaskOrder();
     return;
   }
 
@@ -7157,6 +7563,8 @@ async function load() {
 
   // Ensure a current-week vision exists (rollover if needed)
   rolloverVisionIfNeeded();
+  // v193: Assign `order` field to any task that lacks one (legacy migration)
+  migrateTaskOrder();
   setSyncStatus('idle');
 }
 
@@ -7618,11 +8026,11 @@ function render() {
   ['todo','doing','blocked','done'].forEach(col => {
     const body = document.querySelector(`[data-body="${col}"]`);
     const list = state.tasks.filter(t => t.col === col && !t.backlog && t.type !== 'quest' && !isOrphanedByCompletedQuest(t) && passesPainFilter(t));
-    // v175: Done column always sorted newest-first by completedAt. Missing
-    // timestamps sink to the bottom (treated as 0).
-    if (col === 'done') {
-      list.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
-    }
+    // v193: All columns sorted by manual `order` field (ascending — lower = top).
+    // Replaces v175's Done-specific completedAt sort. Users can manually drag
+    // to reorder within any column, including Done. New tasks/completions get
+    // sensible default orders so the visual sequence matches user expectations.
+    list.sort((a, b) => (a.order || 0) - (b.order || 0));
     document.querySelector(`[data-count="${col}"]`).textContent = list.length;
     body.innerHTML = '';
     if (list.length === 0 && col === 'done') {
@@ -7642,6 +8050,8 @@ function render() {
   // Backlog — also excludes quest-type items (v119)
   const backlogBody = document.getElementById('backlogBody');
   const backlogList = state.tasks.filter(t => t.backlog && t.type !== 'quest' && !isOrphanedByCompletedQuest(t) && passesPainFilter(t));
+  // v193: Backlog also respects manual order (ascending)
+  backlogList.sort((a, b) => (a.order || 0) - (b.order || 0));
   backlogBody.innerHTML = '';
   if (backlogList.length === 0) {
     const e = document.createElement('div');
@@ -7897,10 +8307,11 @@ function renderTask(t) {
   const text = document.createElement('div');
   text.className = 'task-text';
   text.textContent = t.text;
+  // v203: Always set the native tooltip to the full title so users can hover
+  // to verify long clamped titles without opening the detail overlay.
+  text.title = t.text;
   if (t.url) {
     el.classList.add('is-link');
-    // Show the full label on hover since the visible text is single-line clipped
-    text.title = t.text;
   }
   // v169: Removed mousedown preventDefault on .task-text. In WebKit/Chrome,
   // calling preventDefault() on mousedown of a draggable element cancels the
@@ -8076,6 +8487,8 @@ function renderTask(t) {
     document.querySelectorAll('.absorb-target, .absorb-charging').forEach(q => {
       q.classList.remove('absorb-target', 'absorb-charging');
     });
+    // v193: Clear slot-opening indicators in case dragleave missed them
+    clearDropSlotIndicators();
   });
 
   // Single-click on a regular (non-quest) task card opens the detail overlay.
@@ -8157,6 +8570,10 @@ document.querySelectorAll('.add-input').forEach(input => {
       type: 'task',
       pain: pendingPain[source] || 1,
       createdAt: nowMs(),
+      // v193: Manual reorder support — new tasks append to the end of their
+      // column. We compute the max existing `order` in the same column/scope
+      // and add 1. Sparse fractional indexing for reorders happens at drop time.
+      order: computeAppendOrder(col, isBacklog, isQuestInput ? currentQuestId : null),
     };
     if (isUrl(text)) {
       const { fullUrl, displayLabel } = parseUrl(text);
@@ -8249,20 +8666,28 @@ document.querySelectorAll('.column').forEach(col => {
       // can fire the cat speech on dragend (regardless of where the user
       // finally drops the card).
       __dragHoveredBlockedDoing = true;
+      // Skip slot indicator when blocked — no insertion will happen
+      clearDropSlotIndicators();
     } else {
       col.classList.remove('doing-blocked');
+      // v193: Show slot-opening indicator — find the card above which the
+      // drop would land and mark it with .drop-slot-above. CSS opens a visible
+      // gap above that card via margin-top transition.
+      updateDropSlotIndicator(col, e.clientY, currentDraggedTaskId);
     }
   });
   col.addEventListener('dragleave', (e) => {
     if (!col.contains(e.relatedTarget)) {
       col.classList.remove('drag-over');
       col.classList.remove('doing-blocked');
+      clearDropSlotIndicators();
     }
   });
   col.addEventListener('drop', (e) => {
     e.preventDefault();
     col.classList.remove('drag-over');
     col.classList.remove('doing-blocked');
+    clearDropSlotIndicators();
     const id = e.dataTransfer.getData('text/plain');
     const task = state.tasks.find(t => t.id === id);
     if (!task) return;
@@ -8282,6 +8707,15 @@ document.querySelectorAll('.column').forEach(col => {
     }
 
     task.col = newCol;
+
+    // v193: Compute new `order` based on cursor Y position within column.
+    // findDropBeforeTaskId returns the id of the task we want to insert ABOVE
+    // (or null = drop at end). Then computeInsertOrder gives us the order value.
+    const bodyEl = col.querySelector('[data-body]');
+    if (bodyEl) {
+      const beforeId = findDropBeforeTaskId(bodyEl, e.clientY, task.id);
+      task.order = computeInsertOrder(newCol, !!task.backlog, task.questId || null, beforeId, task.id);
+    }
 
     // v190: If the focused task is being moved OUT of Doing to any other
     // column, end the focus session (both fullscreen overlay and minimized
@@ -8643,6 +9077,8 @@ function renderQuestView() {
     if (backlogBody) {
       backlogBody.innerHTML = '';
       const list = backlogChildren.filter(t => passesPainFilter(t));
+      // v193: Manual order applied here too
+      list.sort((a, b) => (a.order || 0) - (b.order || 0));
       if (list.length === 0) {
         const e = document.createElement('div');
         e.className = 'backlog-empty';
@@ -8657,10 +9093,8 @@ function renderQuestView() {
     ['todo','doing','blocked','done'].forEach(col => {
       const body = document.querySelector(`[data-quest-body="${col}"]`);
       const list = activeChildren.filter(t => t.col === col && passesPainFilter(t));
-      // v175: Done column sorted newest-first by completedAt (mirrors main board)
-      if (col === 'done') {
-        list.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
-      }
+      // v193: All Quest sub-columns sorted by manual `order` (mirrors main board)
+      list.sort((a, b) => (a.order || 0) - (b.order || 0));
       document.querySelector(`[data-quest-count="${col}"]`).textContent = list.length;
       body.innerHTML = '';
       if (list.length === 0 && col === 'done') {
@@ -8773,20 +9207,25 @@ function bindQuestBoardDnD() {
         // v186: Same hover-tracking as main board so the cat speech still
         // fires on dragend even if user hovered Quest's blocked Doing.
         __dragHoveredBlockedDoing = true;
+        clearDropSlotIndicators();
       } else {
         col.classList.remove('doing-blocked');
+        // v193: Slot-opening indicator for in-Quest reorder
+        updateDropSlotIndicator(col, e.clientY, currentDraggedTaskId);
       }
     });
     col.addEventListener('dragleave', (e) => {
       if (!col.contains(e.relatedTarget)) {
         col.classList.remove('drag-over');
         col.classList.remove('doing-blocked');
+        clearDropSlotIndicators();
       }
     });
     col.addEventListener('drop', (e) => {
       e.preventDefault();
       col.classList.remove('drag-over');
       col.classList.remove('doing-blocked');
+      clearDropSlotIndicators();
       const id = e.dataTransfer.getData('text/plain');
       const task = state.tasks.find(t => t.id === id);
       if (!task) return;
@@ -8807,6 +9246,13 @@ function bindQuestBoardDnD() {
       }
 
       task.col = newCol;
+
+      // v193: Compute new `order` based on cursor Y position within column.
+      const questBodyEl = col.querySelector('[data-quest-body]');
+      if (questBodyEl) {
+        const beforeId = findDropBeforeTaskId(questBodyEl, e.clientY, task.id);
+        task.order = computeInsertOrder(newCol, !!task.backlog, task.questId || null, beforeId, task.id);
+      }
 
       // v190: End focus session when focused task moves out of Doing.
       if (wasDoing && !becomingDoing && focusTaskId === task.id) {
@@ -10209,6 +10655,12 @@ document.getElementById('focusMarkDone').addEventListener('click', (e) => {
   setTimeout(() => exitFocus(), 600);
 });
 
+// v204: Stop timer — explicit way to end the focus session without completing
+// the task. The task stays in Doing; only the focus session ends.
+document.getElementById('focusStopTimer').addEventListener('click', () => {
+  exitFocus();
+});
+
 // ============ QUESTS NOTEBOOK ============
 function openQuestsNotebook() {
   if (currentView !== 'quests') previousView = currentView;
@@ -11004,43 +11456,83 @@ function renderJournal() {
       source.appendChild(tag);
     } else {
       const t = entry.task;
-      // Kind prefix for non-outcome entries — small visual marker so manual
-      // comments are distinguishable from focus check-ins at a glance.
-      const kindPrefix = document.createElement('span');
-      kindPrefix.className = 'kind-prefix kind-' + (entry.kind || 'focus');
-      kindPrefix.textContent = entry.kind === 'comment' ? '· Comment' : '◆ Focus';
-      source.appendChild(kindPrefix);
+      // v197: Consolidated source readout — single line:
+      //   [dot] [task pill tinted with quest color]
+      // - Dot color encodes entry kind: chartreuse-ish for focus check-ins,
+      //   muted grey for comments. Subtle, no text label.
+      // - Task pill: tinted with the parent quest's color (or accent if no
+      //   parent quest). The tint visually groups entries by quest while
+      //   the bracket-like frame marks it as a task reference.
+      // - Long titles truncated to ~36 chars with ellipsis to keep rows tight.
+      const dot = document.createElement('span');
+      dot.className = 'journal-dot kind-' + (entry.kind || 'focus');
+      source.appendChild(dot);
+
+      // Resolve the quest reference + label
+      let questColor = null;
+      let displayTitle = t.text;
       if (t.type === 'quest') {
-        const tag = document.createElement('span');
-        tag.className = 'quest-tag';
-        tag.textContent = 'Quest';
-        const name = document.createElement('span');
-        name.className = 'quest-name';
-        name.textContent = t.text;
-        source.appendChild(tag);
-        source.appendChild(name);
+        // Entry is on a Quest card itself — use that quest's own color
+        questColor = questColorFor(t);
       } else if (t.questId) {
-        const parent = state.tasks.find(x => x.id === t.questId);
-        const tag = document.createElement('span');
-        tag.className = 'quest-tag';
-        tag.textContent = parent ? `Quest: ${parent.text}` : 'Quest';
-        const name = document.createElement('span');
-        name.className = 'objective-name';
-        name.textContent = t.text;
-        source.appendChild(tag);
-        source.appendChild(name);
-      } else {
-        const name = document.createElement('span');
-        name.className = 'task-name';
-        name.textContent = t.text;
-        source.appendChild(name);
+        const parent = state.tasks.find(x => x.id === t.questId && x.type === 'quest');
+        if (parent) questColor = questColorFor(parent);
       }
+      // Truncate long titles for readability
+      if (displayTitle && displayTitle.length > 36) {
+        displayTitle = displayTitle.slice(0, 35).trimEnd() + '…';
+      }
+      const pill = document.createElement('span');
+      pill.className = 'journal-task-pill';
+      if (questColor) {
+        pill.style.setProperty('--pill-color', questColor);
+        pill.classList.add('has-quest');
+      }
+      pill.textContent = displayTitle;
+      pill.title = t.text; // full title on hover
+      source.appendChild(pill);
     }
 
-    // Note
+    // Note — v198: detect the legacy "Switched to task: X" pattern and render
+    // the task name X as an inline quest-colored pill. Helps surface the
+    // context-switch entries with the same visual language used elsewhere.
+    // Note: the auto-switched comment was removed in v183 (hard-reject replaces
+    // bump-swap), but existing logs from older versions still need this rendering.
     const note = document.createElement('div');
     note.className = 'journal-note';
-    note.textContent = entry.note;
+    const noteText = String(entry.note || '');
+    const switchMatch = /^Switched to task:\s*(.+)$/.exec(noteText);
+    if (switchMatch && entry.kind !== 'outcome') {
+      const switchedToTitle = switchMatch[1].trim();
+      // Try to find that task to grab its quest color (best-effort match by title)
+      const referencedTask = state.tasks.find(x => x.text === switchedToTitle && x.type !== 'quest');
+      let refColor = null;
+      if (referencedTask) {
+        if (referencedTask.questId) {
+          const parent = state.tasks.find(x => x.id === referencedTask.questId && x.type === 'quest');
+          if (parent) refColor = questColorFor(parent);
+        }
+      }
+      // Truncate long titles same as the source pill
+      let displayTitle = switchedToTitle;
+      if (displayTitle.length > 36) {
+        displayTitle = displayTitle.slice(0, 35).trimEnd() + '…';
+      }
+      // Build: "Switched to " + [pill]
+      const prefix = document.createTextNode('Switched to ');
+      const refPill = document.createElement('span');
+      refPill.className = 'journal-task-pill';
+      if (refColor) {
+        refPill.style.setProperty('--pill-color', refColor);
+        refPill.classList.add('has-quest');
+      }
+      refPill.textContent = displayTitle;
+      refPill.title = switchedToTitle;
+      note.appendChild(prefix);
+      note.appendChild(refPill);
+    } else {
+      note.textContent = noteText;
+    }
 
     // Timestamp
     const time = document.createElement('div');
